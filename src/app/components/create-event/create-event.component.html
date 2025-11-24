@@ -1,0 +1,122 @@
+<div class="create-event-page" *ngIf="!loading; else loadingState">
+    <section class="create-event-hero card shadow-sm">
+        <div class="create-event-hero__content">
+            <h1>Create a Volunteer Event</h1>
+            <p>Design experiences that bring volunteers and communities together. Provide clear details so your event fills up quickly.</p>
+            <ul class="create-event-hero__list" *ngIf="isOrganizer">
+                <li><i class="bi bi-buildings"></i>Events will be published under <strong>{{ organizations.length > 0 ? organizations[0].name : '' }}</strong></li>
+                <li><i class="bi bi-people"></i>Volunteers can sign up instantly once published</li>
+                <li><i class="bi bi-shield-check"></i>Need support? Organizer dashboard has moderation tools</li>
+            </ul>
+            <ul class="create-event-hero__list" *ngIf="isAdmin">
+                <li><i class="bi bi-buildings"></i>Select any approved organization to host this event</li>
+                <li><i class="bi bi-bar-chart"></i>Help organizers keep their calendars full</li>
+                <li><i class="bi bi-person-workspace"></i>Review event status in the admin dashboard</li>
+            </ul>
+        </div>
+        <div class="create-event-hero__image">
+            <img src="assets/VS_Logo_Banner.png" alt="VolunteerSync banner">
+        </div>
+    </section>
+
+    <section class="create-event-form card shadow-sm">
+        <h2>Event Details</h2>
+        <p class="create-event-form__subtitle">Fill out the information below. Fields marked with * are required.</p>
+
+        <div *ngIf="successMessage" class="create-event-alert create-event-alert--success">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+        </div>
+        <div *ngIf="errorMessage" class="create-event-alert create-event-alert--error">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+        </div>
+
+        <form (ngSubmit)="onSubmit()" novalidate>
+            <div class="create-event-section">
+                <h3>Event Information</h3>
+                <div class="create-event-grid">
+                    <div class="create-event-field create-event-field--full">
+                        <label for="title">Event Title *</label>
+                        <input type="text" id="title" name="title" [(ngModel)]="event.title" maxlength="100" required [disabled]="!canCreateEvents">
+                    </div>
+                    <div class="create-event-field create-event-field--full">
+                        <label for="description">Description *</label>
+                        <textarea id="description" name="description" rows="4" [(ngModel)]="event.description" maxlength="65535" required [disabled]="!canCreateEvents"></textarea>
+                    </div>
+                    <div class="create-event-field">
+                        <label for="eventDate">Event Date *</label>
+                        <input type="date" id="eventDate" name="eventDate" [(ngModel)]="event.eventDate" [attr.min]="today" required [disabled]="!canCreateEvents">
+                    </div>
+                    <div class="create-event-field">
+                        <label for="eventTime">Event Time *</label>
+                        <input type="time" id="eventTime" name="eventTime" [(ngModel)]="event.eventTime" required [disabled]="!canCreateEvents">
+                    </div>
+                    <div class="create-event-field">
+                        <label for="numNeeded">Volunteers Needed *</label>
+                        <input type="number" id="numNeeded" name="numNeeded" min="1" max="10000" [(ngModel)]="event.numNeeded" required [disabled]="!canCreateEvents">
+                    </div>
+                </div>
+            </div>
+
+            <div class="create-event-section">
+                <h3>Location</h3>
+                <div class="create-event-grid">
+                    <div class="create-event-field">
+                        <label for="locationName">Location Name *</label>
+                        <input type="text" id="locationName" name="locationName" [(ngModel)]="event.locationName" maxlength="100" required [disabled]="!canCreateEvents">
+                    </div>
+                    <div class="create-event-field create-event-field--full">
+                        <label for="address">Street Address *</label>
+                        <input type="text" id="address" name="address" [(ngModel)]="event.address" maxlength="65535" required [disabled]="!canCreateEvents">
+                    </div>
+                    <div class="create-event-field">
+                        <label for="city">City *</label>
+                        <input type="text" id="city" name="city" [(ngModel)]="event.city" maxlength="100" required [disabled]="!canCreateEvents">
+                    </div>
+                    <div class="create-event-field">
+                        <label for="state">State *</label>
+                        <select id="state" name="state" [(ngModel)]="event.state" required [disabled]="!canCreateEvents">
+                            <option value="">Select a state</option>
+                            <option *ngFor="let state of usStates" [value]="state.code">{{ state.name }} ({{ state.code }})</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="create-event-section">
+                <h3>Organization</h3>
+                <ng-container *ngIf="isOrganizer; else adminOrgSelect">
+                    <div class="create-event-field create-event-field--full">
+                        <label>Hosting Organization</label>
+                        <div class="create-event-field__readonly">
+                            {{ organizations.length > 0 ? organizations[0].name : '' }}
+                        </div>
+                        <input type="hidden" name="organizationId" [(ngModel)]="event.organizationId">
+                        <small class="form-text">Organizers can only create events for their linked organization.</small>
+                    </div>
+                </ng-container>
+                <ng-template #adminOrgSelect>
+                    <div class="create-event-field create-event-field--full">
+                        <label for="organizationId">Select Organization *</label>
+                        <select id="organizationId" name="organizationId" [(ngModel)]="event.organizationId" required [disabled]="!canCreateEvents">
+                            <option *ngFor="let org of organizations" [value]="org.organizationId">{{ org.name }}</option>
+                        </select>
+                    </div>
+                </ng-template>
+            </div>
+
+            <div class="create-event-actions">
+                <button type="submit" class="btn btn-success btn-lg" [disabled]="loading || !canCreateEvents">Create Event</button>
+                <a routerLink="/events" class="btn btn-outline-secondary">Cancel</a>
+            </div>
+        </form>
+    </section>
+</div>
+
+<ng-template #loadingState>
+    <div class="create-event-loading">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Preparing event form…</p>
+    </div>
+</ng-template>

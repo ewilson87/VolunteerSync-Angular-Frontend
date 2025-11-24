@@ -1,0 +1,27 @@
+<div class="error-page">
+    <div class="error-card card shadow-sm">
+        <div class="error-card__badge">
+            <span class="error-card__code">403</span>
+            <span class="error-card__label">Access restricted</span>
+        </div>
+        <h1 class="error-card__title">You don’t have permission to view this page.</h1>
+        <p class="error-card__message">{{ message }}</p>
+        <div class="error-card__actions">
+            <a routerLink="/" class="btn btn-success btn-lg">
+                <i class="bi bi-speedometer2 me-2"></i>Return to Dashboard
+            </a>
+            <a routerLink="/support" class="btn btn-outline-success btn-lg">
+                <i class="bi bi-chat-dots me-2"></i>Contact Support
+            </a>
+        </div>
+        <div class="error-card__links">
+            <span>Want to keep browsing?</span>
+            <a routerLink="/events" class="error-card__link">Discover upcoming events</a>
+        </div>
+    </div>
+    <div class="error-visual">
+        <div class="error-visual__orb"></div>
+        <div class="error-visual__ring"></div>
+        <div class="error-visual__icon"><i class="bi bi-lock-fill"></i></div>
+    </div>
+</div>

@@ -1,0 +1,462 @@
+<div class="organizer-page" *ngIf="!isLoading; else loadingState">
+    <ng-container *ngIf="isOrganizerUser; else accessDenied">
+        <ng-container *ngIf="organization; else noOrganization">
+            <!-- Approval Status Alert -->
+            <div *ngIf="organization.approvalStatus === 'pending'" class="organizer-alert organizer-alert--warning">
+                <div class="organizer-alert__icon">
+                    <i class="bi bi-clock-history"></i>
+                </div>
+                <div class="organizer-alert__content">
+                    <div class="organizer-alert__header">
+                        <strong>Pending Approval</strong>
+                        <span class="organizer-alert__badge">Under Review</span>
+                    </div>
+                    <p class="organizer-alert__message">
+                        Your organization is currently under review. You will be notified once a decision has been made.
+                    </p>
+                </div>
+            </div>
+            <div *ngIf="organization.approvalStatus === 'rejected'" class="organizer-alert organizer-alert--error">
+                <div class="organizer-alert__icon">
+                    <i class="bi bi-exclamation-triangle-fill"></i>
+                </div>
+                <div class="organizer-alert__content">
+                    <div class="organizer-alert__header">
+                        <strong>Organization Rejected</strong>
+                        <span class="organizer-alert__badge">Action Required</span>
+                    </div>
+                    <p class="organizer-alert__message" *ngIf="!organization.rejectionReason">
+                        Your organization has been rejected. Please contact support for more information.
+                    </p>
+                    <div *ngIf="organization.rejectionReason" class="organizer-alert__reason">
+                        <div class="organizer-alert__reason-label">
+                            <i class="bi bi-info-circle me-1"></i>
+                            <span>Rejection Reason:</span>
+                        </div>
+                        <div class="organizer-alert__reason-text">
+                            {{ organization.rejectionReason }}
+                        </div>
+                    </div>
+                    <div class="organizer-alert__actions">
+                        <button class="btn btn-light btn-sm" (click)="showSupportMessageModal()">
+                            <i class="bi bi-envelope me-1"></i>Contact Support
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <section class="organizer-hero card shadow-sm">
+                <div class="organizer-hero__content">
+                    <h1>{{ organization.name }}</h1>
+                    <p>{{ organization.description }}</p>
+                    <div class="organizer-hero__meta">
+                        <div>
+                            <span class="organizer-hero__meta-label">Contact </span>
+                            <span class="organizer-hero__meta-value">{{ organization.contactEmail }}</span>
+                        </div>
+                        <div>
+                            <span class="organizer-hero__meta-label">Phone </span>
+                            <span class="organizer-hero__meta-value">{{ organization.contactPhone || 'Not provided'
+                                }}</span>
+                        </div>
+                        <div>
+                            <span class="organizer-hero__meta-label">Website </span>
+                            <span class="organizer-hero__meta-value">
+                                <a *ngIf="organization.website" [href]="organization.website" target="_blank"
+                                    rel="noopener">Visit Site</a>
+                                <span *ngIf="!organization.website">Not provided</span>
+                            </span>
+                        </div>
+                    </div>
+                    <div class="organizer-hero__actions">
+                        <button class="btn btn-outline-light" *ngIf="!isEditingOrganization"
+                            (click)="startEditingOrganization()">Edit Organization</button>
+                        <a routerLink="/create-event" 
+                           class="btn btn-light" 
+                           *ngIf="organization.approvalStatus?.toLowerCase() === 'approved'">Create Event</a>
+                    </div>
+                </div>
+                <div class="organizer-hero__metrics">
+                    <div class="metric-card">
+                        <span class="metric-card__label">Active Events</span>
+                        <span class="metric-card__value">{{ upcomingEventsList.length }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-card__label">Past Events</span>
+                        <span class="metric-card__value">{{ pastEventsList.length }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-card__label">Total Registrations</span>
+                        <span class="metric-card__value">{{ totalRegistrations }}</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="organizer-edit card shadow-sm" *ngIf="isEditingOrganization && editableOrg">
+                <h2>Edit Organization</h2>
+                <form (ngSubmit)="saveOrganization()" class="organizer-form">
+                    <div class="organizer-field organizer-field--full">
+                        <label for="orgName">Organization Name</label>
+                        <input type="text" id="orgName" [(ngModel)]="editableOrg.name" name="name" maxlength="100" required>
+                    </div>
+                    <div class="organizer-field organizer-field--full">
+                        <label for="orgDescription">Description</label>
+                        <textarea id="orgDescription" [(ngModel)]="editableOrg.description" name="description" rows="3"
+                            maxlength="65535" required></textarea>
+                    </div>
+                    <div class="organizer-field">
+                        <label for="orgEmail">Contact Email</label>
+                        <input type="email" id="orgEmail" [(ngModel)]="editableOrg.contactEmail" name="contactEmail"
+                            maxlength="100" required>
+                    </div>
+                    <div class="organizer-field">
+                        <label for="orgPhone">Contact Phone</label>
+                        <input type="tel" id="orgPhone" [(ngModel)]="editableOrg.contactPhone" name="contactPhone"
+                            maxlength="20" required>
+                    </div>
+                    <div class="organizer-field organizer-field--full">
+                        <label for="orgWebsite">Website</label>
+                        <input type="url" id="orgWebsite" [(ngModel)]="editableOrg.website" name="website"
+                            maxlength="255" placeholder="https://yourorg.org">
+                    </div>
+                    <div class="organizer-actions">
+                        <button type="button" class="btn btn-outline-secondary"
+                            (click)="cancelEditingOrganization()">Cancel</button>
+                        <button type="submit" class="btn btn-success">Save Changes</button>
+                    </div>
+                </form>
+            </section>
+
+            <section class="organizer-events card shadow-sm">
+                <div class="organizer-events__header">
+                    <div>
+                        <h2>Events</h2>
+                        <p>Manage upcoming and past volunteer opportunities.</p>
+                    </div>
+                    <a routerLink="/create-event" class="btn btn-outline-success">Create Event</a>
+                </div>
+
+                <div *ngIf="success" class="organizer-alert organizer-alert--success">
+                    <span><i class="bi bi-check-circle-fill me-2"></i>{{ success }}</span>
+                    <button type="button" class="btn-close" (click)="success = ''"></button>
+                </div>
+                <div *ngIf="error" class="organizer-alert organizer-alert--error">
+                    <span><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}</span>
+                    <button type="button" class="btn-close" (click)="error = ''"></button>
+                </div>
+
+                <div class="organizer-tabs" *ngIf="events.length > 0">
+                    <button type="button" class="organizer-tabs__button" [class.active]="activeEventTab === 'upcoming'"
+                        (click)="setActiveEventTab('upcoming')">
+                        Upcoming ({{ upcomingEventsList.length }})
+                    </button>
+                    <button type="button" class="organizer-tabs__button" [class.active]="activeEventTab === 'past'"
+                        (click)="setActiveEventTab('past')">
+                        Past ({{ pastEventsList.length }})
+                    </button>
+                    <button type="button" class="organizer-tabs__button" [class.active]="activeEventTab === 'all'"
+                        (click)="setActiveEventTab('all')">
+                        All ({{ events.length }})
+                    </button>
+                </div>
+
+                <div *ngIf="events.length === 0" class="organizer-alert organizer-alert--muted">
+                    <p>You haven't created any events yet. Create your first volunteer opportunity.</p>
+                </div>
+
+                <div class="organizer-event-list" *ngIf="events.length > 0">
+                    <div class="organizer-event" *ngFor="let event of displayedEvents">
+                        <div class="organizer-event__header">
+                            <div>
+                                <h3>{{ event.title }}</h3>
+                                <span class="organizer-event__badge"
+                                    [class.organizer-event__badge--past]="isEventInPast(event)">
+                                    {{ isEventInPast(event) ? 'Past Event' : 'Upcoming Event' }}
+                                </span>
+                            </div>
+                            <div class="organizer-event__actions">
+                                <button class="btn btn-outline-primary btn-sm" 
+                                    *ngIf="!isEventInPast(event)"
+                                    (click)="editEvent(event)"><i
+                                        class="bi bi-pencil me-1"></i>Edit</button>
+                                <button class="btn btn-outline-danger btn-sm" (click)="confirmDeleteEvent(event)"><i
+                                        class="bi bi-trash me-1"></i>Delete</button>
+                            </div>
+                        </div>
+                        <p>{{ event.description }}</p>
+                        <ul class="organizer-event__meta">
+                            <li><i class="bi bi-calendar-event"></i>{{ event.eventDate | date:'fullDate' }} at {{
+                                event.eventTime }}</li>
+                            <li><i class="bi bi-geo-alt"></i>{{ event.locationName }}, {{ event.city }} {{ event.state
+                                }}</li>
+                            <li><i class="bi bi-people"></i>{{ event.numSignedUp || 0 }} / {{ event.numNeeded }}
+                                volunteers</li>
+                        </ul>
+                        <button class="organizer-event__registrations" (click)="loadEventRegistrations(event)">
+                            <i class="bi"
+                                [ngClass]="event.showRegistrations ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                            {{ event.showRegistrations ? 'Hide Registrations' : 'View Registrations' }} ({{
+                            event.numSignedUp || 0 }})
+                        </button>
+                        <div class="organizer-event__registrations-list" *ngIf="event.showRegistrations">
+                            <div class="organizer-alert organizer-alert--muted" *ngIf="!event.registrations">
+                                Loading registrations…
+                            </div>
+                            <div class="organizer-alert organizer-alert--muted"
+                                *ngIf="event.registrations && event.registrations.length === 0">
+                                No volunteers have signed up yet.
+                            </div>
+                            <table class="organizor-table"
+                                *ngIf="event.registrations && event.registrations.length > 0">
+                                <thead>
+                                    <tr>
+                                        <th>Volunteer</th>
+                                        <th>Email</th>
+                                        <th>Signup Date</th>
+                                        <th>Status</th>
+                                        <th *ngIf="isEventInPast(event)">Attendance</th>
+                                        <th *ngIf="isEventInPast(event)">Hours</th>
+                                        <th></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr *ngFor="let signup of event.registrations">
+                                        <td>
+                                            <span
+                                                *ngIf="getUserDetails(event, signup.userId) as user; else loadingUser">
+                                                {{ user.firstName }} {{ user.lastName }}
+                                            </span>
+                                            <ng-template #loadingUser><span
+                                                    class="text-muted">Loading…</span></ng-template>
+                                        </td>
+                                        <td>{{ getUserDetails(event, signup.userId)?.email }}</td>
+                                        <td>{{ signup.signupDate | date:'mediumDate' }}</td>
+                                        <td>
+                                            <span class="badge" [ngClass]="{
+                                                'bg-success text-white': signup.status === 'active' || signup.status === 'registered',
+                                                'bg-warning text-dark': signup.status === 'pending',
+                                                'bg-danger text-white': signup.status === 'cancelled'
+                                            }">{{ signup.status }}</span>
+                                        </td>
+                                        <!-- Attendance columns for past events -->
+                                        <td *ngIf="isEventInPast(event)">
+                                            <ng-container *ngIf="editingAttendanceForSignup === signup.signupId; else attendanceDisplay">
+                                                <select [(ngModel)]="attendanceForm.status" class="form-select form-select-sm">
+                                                    <option value="completed">Attended</option>
+                                                    <option value="no_show">No Show</option>
+                                                    <option value="excused">Excused</option>
+                                                </select>
+                                            </ng-container>
+                                            <ng-template #attendanceDisplay>
+                                                <span class="badge" [ngClass]="getAttendanceStatusBadgeClass(signup.attendance?.status)">
+                                                    {{ getAttendanceStatusLabel(signup.attendance?.status) }}
+                                                </span>
+                                            </ng-template>
+                                        </td>
+                                        <td *ngIf="isEventInPast(event)">
+                                            <ng-container *ngIf="editingAttendanceForSignup === signup.signupId; else hoursDisplay">
+                                                <input type="number" [(ngModel)]="attendanceForm.hours" 
+                                                    class="form-control form-control-sm" 
+                                                    min="0" max="1000" step="0.5" 
+                                                    [required]="true"
+                                                    placeholder="Hours">
+                                            </ng-container>
+                                            <ng-template #hoursDisplay>
+                                                <span *ngIf="signup.attendance && signup.attendance.hours !== null && signup.attendance.hours !== undefined">
+                                                    {{ signup.attendance.hours }} hrs
+                                                </span>
+                                                <span *ngIf="!signup.attendance || signup.attendance.hours === null || signup.attendance.hours === undefined" class="text-muted">—</span>
+                                            </ng-template>
+                                        </td>
+                                        <td>
+                                            <div class="d-flex gap-1" *ngIf="!isEventInPast(event)">
+                                                <button class="btn btn-outline-danger btn-sm"
+                                                    (click)="cancelUserRegistration(event, signup.signupId!)">Remove</button>
+                                            </div>
+                                            <div class="d-flex gap-1" *ngIf="isEventInPast(event)">
+                                                <ng-container *ngIf="editingAttendanceForSignup === signup.signupId; else attendanceActions">
+                                                    <button class="btn btn-success btn-sm" (click)="saveAttendance(event, signup)">
+                                                        <i class="bi bi-check"></i> Save
+                                                    </button>
+                                                    <button class="btn btn-outline-secondary btn-sm" (click)="cancelEditingAttendance()">
+                                                        <i class="bi bi-x"></i> Cancel
+                                                    </button>
+                                                </ng-container>
+                                                <ng-template #attendanceActions>
+                                                    <button class="btn btn-outline-primary btn-sm" 
+                                                        (click)="startEditingAttendance(event, signup)">
+                                                        <i class="bi bi-pencil"></i> {{ signup.attendance ? 'Edit' : 'Mark' }}
+                                                    </button>
+                                                    <button class="btn btn-outline-danger btn-sm" 
+                                                        *ngIf="signup.attendance"
+                                                        (click)="deleteAttendance(event, signup)">
+                                                        <i class="bi bi-trash"></i>
+                                                    </button>
+                                                </ng-template>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Edit Event Form -->
+            <section class="organizer-edit-event card shadow-sm" *ngIf="isEditingEvent && selectedEvent">
+                <h2>Edit Event</h2>
+            <form (ngSubmit)="saveEvent()" class="organizer-form">
+                <div class="organizer-field organizer-field--full">
+                    <label for="eventTitle">Event Title</label>
+                    <input type="text" id="eventTitle" [(ngModel)]="selectedEvent.title" name="title" maxlength="100" required>
+                </div>
+                <div class="organizer-field organizer-field--full">
+                    <label for="eventDescription">Description</label>
+                    <textarea id="eventDescription" [(ngModel)]="selectedEvent.description" name="description" rows="3"
+                        maxlength="65535" required></textarea>
+                </div>
+                <div class="organizer-field">
+                    <label for="eventDate">Date</label>
+                    <input type="date" id="eventDate" [(ngModel)]="selectedEvent.eventDate" name="eventDate" required>
+                </div>
+                <div class="organizer-field">
+                    <label for="eventTime">Time</label>
+                    <input type="time" id="eventTime" [(ngModel)]="selectedEvent.eventTime" name="eventTime" required>
+                </div>
+                <div class="organizer-field organizer-field--full">
+                    <label for="eventLocation">Location Name</label>
+                    <input type="text" id="eventLocation" [(ngModel)]="selectedEvent.locationName" name="locationName"
+                        maxlength="100" required>
+                </div>
+                <div class="organizer-field organizer-field--full">
+                    <label for="eventAddress">Address</label>
+                    <input type="text" id="eventAddress" [(ngModel)]="selectedEvent.address" name="address" maxlength="65535" required>
+                </div>
+                <div class="organizer-field">
+                    <label for="eventCity">City</label>
+                    <input type="text" id="eventCity" [(ngModel)]="selectedEvent.city" name="city" maxlength="100" required>
+                </div>
+                <div class="organizer-field">
+                    <label for="eventState">State</label>
+                    <select id="eventState" [(ngModel)]="selectedEvent.state" name="state" required>
+                        <option value="">Select a state</option>
+                        <option *ngFor="let state of usStates" [value]="state.code">{{ state.name }} ({{ state.code }})</option>
+                    </select>
+                </div>
+                <div class="organizer-field">
+                    <label for="eventVolunteers">Volunteers Needed</label>
+                    <input type="number" id="eventVolunteers" [(ngModel)]="selectedEvent.numNeeded" name="numNeeded"
+                        min="1" max="10000" required>
+                </div>
+                <div class="organizer-actions">
+                    <button type="button" class="btn btn-outline-secondary" (click)="cancelEditEvent()">Cancel</button>
+                    <button type="submit" class="btn btn-success">Save Changes</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="organizer-delete card shadow-sm" *ngIf="showDeleteEventConfirmation && selectedEvent">
+            <h2>Delete Event</h2>
+            <p>Are you sure you want to delete <strong>{{ selectedEvent.title }}</strong>? This action cannot be undone
+                and will remove all registrations.</p>
+            <div class="organizer-actions">
+                <button class="btn btn-outline-secondary" (click)="cancelDeleteEvent()">Cancel</button>
+                <button class="btn btn-danger" (click)="deleteEvent()">Delete Event</button>
+            </div>
+        </section>
+
+        <!-- Support Message Modal -->
+        <div *ngIf="showSupportModal" class="organizer-modal">
+            <div class="organizer-modal__content">
+                <h2>Contact Support</h2>
+                <p>Send a message to appeal your organization's rejection. Our team will review your request and get back to you.</p>
+                
+                <div *ngIf="supportError" class="organizer-alert organizer-alert--error" style="margin-bottom: 1rem;">
+                    <div class="organizer-alert__icon">
+                        <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <div class="organizer-alert__content">
+                        <p class="organizer-alert__message">{{ supportError }}</p>
+                    </div>
+                </div>
+
+                <div *ngIf="supportSubmitted" class="organizer-alert organizer-alert--success" style="margin-bottom: 1rem;">
+                    <div class="organizer-alert__icon">
+                        <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div class="organizer-alert__content">
+                        <p class="organizer-alert__message">Your message has been sent successfully!</p>
+                    </div>
+                </div>
+
+                <form *ngIf="!supportSubmitted" (ngSubmit)="submitSupportMessage()" class="organizer-form">
+                    <div class="organizer-field">
+                        <label for="supportName">Your Name</label>
+                        <input type="text" id="supportName" name="supportName" [(ngModel)]="supportForm.name" maxlength="100" required>
+                    </div>
+                    <div class="organizer-field">
+                        <label for="supportEmail">Email Address</label>
+                        <input type="email" id="supportEmail" name="supportEmail" [(ngModel)]="supportForm.email" maxlength="100" required>
+                    </div>
+                    <div class="organizer-field">
+                        <label for="supportSubject">Subject</label>
+                        <input type="text" id="supportSubject" name="supportSubject" [(ngModel)]="supportForm.subject" maxlength="150" required>
+                    </div>
+                    <div class="organizer-field">
+                        <label for="supportMessage">Message</label>
+                        <textarea id="supportMessage" name="supportMessage" rows="6" [(ngModel)]="supportForm.message" maxlength="65535" required></textarea>
+                    </div>
+                    <div class="organizer-actions">
+                        <button type="button" class="btn btn-outline-secondary" (click)="cancelSupportMessage()">Cancel</button>
+                        <button type="submit" class="btn btn-success" [disabled]="isSubmittingSupport">
+                            {{ isSubmittingSupport ? 'Sending...' : 'Send Message' }}
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        </ng-container>
+    </ng-container>
+</div>
+
+<ng-template #loadingState>
+    <div class="organizer-loading">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading dashboard data…</p>
+    </div>
+</ng-template>
+
+<ng-template #accessDenied>
+    <div class="organizer-alert organizer-alert--error">
+        <p>Access to this page is restricted to organizers and admins only.</p>
+        <a routerLink="/events" class="btn btn-success">Browse Events</a>
+    </div>
+</ng-template>
+
+<ng-template #noOrganization>
+    <div class="organizer-alert organizer-alert--warning">
+        <div *ngIf="currentUser?.role === 'admin' && allOrganizations.length > 0">
+            <p><strong>Select an Organization</strong></p>
+            <p>Please select an organization to view its organizer dashboard:</p>
+            <div class="mt-3">
+                <select class="form-select" [(ngModel)]="selectedOrgId" (change)="onAdminOrgSelect(selectedOrgId!)">
+                    <option value="">-- Select an Organization --</option>
+                    <option *ngFor="let org of allOrganizations" [value]="org.organizationId">
+                        {{ org.name }}
+                    </option>
+                </select>
+            </div>
+        </div>
+        <div *ngIf="currentUser?.role === 'admin' && allOrganizations.length === 0">
+            <p>No organizations available. Please create an organization first.</p>
+            <a routerLink="/admin" class="btn btn-success">Go to Admin Dashboard</a>
+        </div>
+        <div *ngIf="currentUser?.role !== 'admin'">
+            <p>Your account is not linked to an organization. Update your profile to add organization information.</p>
+            <a routerLink="/profile" class="btn btn-success">Go to Profile</a>
+        </div>
+    </div>
+</ng-template>

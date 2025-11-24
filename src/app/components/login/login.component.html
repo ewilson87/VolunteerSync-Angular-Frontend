@@ -1,0 +1,46 @@
+<div class="login-page">
+    <section class="login-hero card shadow-sm">
+        <div class="login-hero__content">
+            <h1>Welcome Back</h1>
+            <p>Log in to manage your volunteer journey, track hours, and discover new ways to serve your community.</p>
+            <ul class="login-hero__list">
+                <li><i class="bi bi-check-circle"></i>View and manage your upcoming events</li>
+                <li><i class="bi bi-check-circle"></i>Track verified service hours and certificates</li>
+                <li><i class="bi bi-check-circle"></i>Stay updated with organization announcements</li>
+            </ul>
+        </div>
+        <div class="login-hero__image">
+            <img src="assets/VS_Logo_Banner.png" alt="VolunteerSync banner">
+        </div>
+    </section>
+
+    <section class="login-form card shadow-sm">
+        <h2>Sign in to VolunteerSync</h2>
+        <p class="login-form__subtitle">Enter your email and password to access your volunteer dashboard.</p>
+
+        <form (ngSubmit)="onLogin()">
+            <div class="login-alert login-alert--error" *ngIf="errorMessage">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+            </div>
+
+            <div class="login-field">
+                <label for="email">Email</label>
+                <input type="email" id="email" name="email" [(ngModel)]="email" required placeholder="you@example.com">
+            </div>
+
+            <div class="login-field">
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" [(ngModel)]="password" required placeholder="Enter your password">
+            </div>
+
+            <div class="login-actions">
+                <button type="submit" class="btn btn-success btn-lg w-100">Log In</button>
+            </div>
+        </form>
+
+        <div class="login-footer">
+            <p>Don't have an account yet? <a routerLink="/register">Create one in minutes.</a></p>
+            <p class="login-footer__help">Need help? <a routerLink="/support">Visit our support center.</a></p>
+        </div>
+    </section>
+</div>

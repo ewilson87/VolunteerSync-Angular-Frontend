@@ -1,0 +1,239 @@
+<div class="event-page">
+    <section class="event-hero card shadow-sm">
+        <div class="event-hero__content">
+            <div>
+                <h1>Find Your Next Volunteer Event</h1>
+                <p>
+                    Browse verified opportunities curated by trusted organizations. Filter by location, date, or host to
+                    discover the perfect way to serve.
+                </p>
+            </div>
+            <div class="event-hero__actions">
+                <button class="btn btn-outline-light toggle-btn" (click)="togglePastEvents()">
+                    <i class="bi me-2" [ngClass]="showPastEvents ? 'bi-calendar-week' : 'bi-clock-history'"></i>
+                    {{ showPastEvents ? 'View Upcoming Events' : 'View Past Events' }}
+                </button>
+                <a *ngIf="canCreateEvent()" routerLink="/create-event" class="btn btn-success">
+                    <i class="bi bi-plus-circle me-2"></i>Create Event
+                </a>
+            </div>
+        </div>
+        <div class="event-hero__status">
+            <span class="status-indicator"
+                [ngClass]="showPastEvents ? 'status-indicator--past' : 'status-indicator--upcoming'"></span>
+            Currently viewing <strong>{{ showPastEvents ? 'Past Events' : 'Upcoming Events' }}</strong>
+        </div>
+    </section>
+
+    <section class="event-filters card shadow-sm">
+        <div class="event-filters__header">
+            <h2>Search &amp; Filter</h2>
+            <p>Use filters to narrow events by city, state, organization, or date.</p>
+        </div>
+        <div class="event-filters__controls">
+            <div class="field">
+                <label for="cityFilter">City</label>
+                <input type="text" id="cityFilter" [(ngModel)]="cityFilter" placeholder="Any city">
+            </div>
+            <div class="field">
+                <label for="stateFilter">State</label>
+                <select id="stateFilter" [(ngModel)]="stateFilter">
+                    <option value="">All States</option>
+                    <option *ngFor="let state of usStates" [value]="state.code">{{ state.name }} ({{ state.code }})</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="organizationFilter">Organization</label>
+                <select id="organizationFilter" [(ngModel)]="organizationFilter">
+                    <option [value]="0">All Organizations</option>
+                    <option *ngFor="let org of organizations" [value]="org.organizationId">{{ org.name }}</option>
+                </select>
+            </div>
+            <div class="field">
+                <label for="dateStartFilter">Start Date</label>
+                <input type="date" id="dateStartFilter" [(ngModel)]="dateStartFilter">
+            </div>
+            <div class="field">
+                <label for="dateEndFilter">End Date</label>
+                <input type="date" id="dateEndFilter" [(ngModel)]="dateEndFilter">
+            </div>
+            <div class="event-filters__actions">
+                <button class="btn btn-success" (click)="applyFilters()">
+                    <i class="bi bi-search me-2"></i>Apply
+                </button>
+                <button class="btn btn-outline-secondary" (click)="clearFilters()">Clear</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="event-feature card shadow-sm" *ngIf="!showPastEvents && featuredEvent">
+        <div class="event-feature__image">
+            <img src="assets/VS_Logo_Banner.png" alt="VolunteerSync Banner">
+        </div>
+        <div class="event-feature__body">
+            <h1 class="text-center">Featured Event</h1>
+            <p class="event-feature__title">{{ featuredEvent.title }}</p>
+            <ul class="event-feature__meta">
+                <li><i class="bi bi-calendar-event"></i>{{ featuredEvent.eventDate | date:'mediumDate' }}</li>
+                <li><i class="bi bi-geo-alt"></i>{{ featuredEvent.city }}, {{ featuredEvent.state }}</li>
+                <li><i class="bi bi-people"></i>{{ featuredEvent.numSignedUp }} / {{ featuredEvent.numNeeded }}
+                    volunteers</li>
+            </ul>
+            <p class="event-feature__description">
+                {{ featuredEvent.description | slice:0:140 }}{{ featuredEvent.description.length > 140 ? '…' : '' }}
+            </p>
+            <a [routerLink]="['/events', featuredEvent.eventId]" class="btn w-100"
+                [ngClass]="isRegistered(featuredEvent.eventId) ? 'btn-success' : 'btn-outline-success'">
+                {{ isRegistered(featuredEvent.eventId) ? 'Manage Registration' : 'Learn More' }}
+            </a>
+        </div>
+    </section>
+
+    <section class="event-content card shadow-sm" *ngIf="!loading && !error">
+        <div class="event-content__layout" *ngIf="filteredEvents.length > 0; else emptyState">
+            <div class="event-list">
+                <div class="event-list__header">
+                    <h3>{{ showPastEvents ? 'Recently Completed Events' : 'Upcoming Events' }}</h3>
+                    <span class="event-list__count">{{ filteredEvents.length }} {{ showPastEvents ? 'past' : 'upcoming'
+                        }} events</span>
+                </div>
+
+                <div class="event-table">
+                    <div class="event-table__row event-table__row--head">
+                        <div>
+                            <button type="button" class="event-table__sort" (click)="setSort('title')"
+                                aria-label="Sort by event name">
+                                Event
+                                <i class="bi ms-1" [ngClass]="getSortIcon('title')"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="event-table__sort" (click)="setSort('date')"
+                                aria-label="Sort by event date">
+                                Date
+                                <i class="bi ms-1" [ngClass]="getSortIcon('date')"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="event-table__sort" (click)="setSort('location')"
+                                aria-label="Sort by location">
+                                Location
+                                <i class="bi ms-1" [ngClass]="getSortIcon('location')"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="event-table__sort" (click)="setSort('volunteers')"
+                                aria-label="Sort by volunteers">
+                                Volunteers
+                                <i class="bi ms-1" [ngClass]="getSortIcon('volunteers')"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <button type="button" class="event-table__sort" (click)="setSort('tags')"
+                                aria-label="Sort by tags">
+                                Tags
+                                <i class="bi ms-1" [ngClass]="getSortIcon('tags')"></i>
+                            </button>
+                        </div>
+                        <div class="text-end">Action</div>
+                    </div>
+                    <div class="event-table__row" *ngFor="let event of paginatedEvents; trackBy: trackByEventId">
+                        <div>
+                            <p class="event-table__title">{{ event.title }}</p>
+                            <p class="event-table__subtitle">{{ event.organizationName || 'Community Organization' }}
+                            </p>
+                        </div>
+                        <div>
+                            <span class="event-table__meta">
+                                <i class="bi bi-calendar-date me-1"></i>{{ event.eventDate | date:'mediumDate' }}
+                            </span>
+                            <span class="event-table__meta">
+                                <i class="bi bi-clock me-1"></i>{{ event.eventTime }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="event-table__meta">
+                                <i class="bi bi-geo-alt me-1"></i>{{ event.city }}, {{ event.state }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="event-table__meta">
+                                <i class="bi bi-people me-1"></i>{{ event.numSignedUp }} / {{ event.numNeeded }}
+                            </span>
+                        </div>
+                        <div>
+                            <span class="tag" *ngFor="let tag of event.tags">{{ tag }}</span>
+                            <span class="tag" *ngIf="!event.tags || event.tags.length === 0">General</span>
+                        </div>
+                        <div class="text-end">
+                            <a [routerLink]="['/events', event.eventId]" class="btn btn-sm" [ngClass]="{
+                                    'btn-outline-secondary': isEventInPast(event),
+                                    'btn-success': !isEventInPast(event) && isRegistered(event.eventId),
+                                    'btn-outline-success': !isEventInPast(event) && !isRegistered(event.eventId)
+                                }">
+                                {{ showPastEvents ? 'View Summary' : (isRegistered(event.eventId) ? 'Manage' : 'Sign
+                                Up') }}
+                            </a>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="event-pagination" *ngIf="filteredEvents.length > 0">
+                    <div class="event-pagination__page-size">
+                        <label for="pageSizeSelect" class="form-label mb-0 me-2">Show</label>
+                        <select id="pageSizeSelect" class="form-select form-select-sm" [(ngModel)]="pageSize"
+                            (ngModelChange)="changePageSize($event)">
+                            <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option>
+                        </select>
+                        <span class="ms-2">per page</span>
+                    </div>
+                    <div class="event-pagination__controls" *ngIf="totalPages > 1">
+                        <button class="btn btn-outline-success btn-sm" (click)="previousPage()"
+                            [disabled]="currentPage === 1">
+                            Prev
+                        </button>
+                        <button *ngFor="let page of pageNumbers" class="btn btn-sm event-pagination__page-button"
+                            [ngClass]="{
+                                'btn-success text-white': page === currentPage,
+                                'btn-outline-success': page !== currentPage
+                            }" (click)="goToPage(page)">
+                            {{ page }}
+                        </button>
+                        <button class="btn btn-outline-success btn-sm" (click)="nextPage()"
+                            [disabled]="currentPage === totalPages">
+                            Next
+                        </button>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </section>
+
+    <ng-template #emptyState>
+        <div class="event-empty card shadow-sm">
+            <div class="event-empty__illustration">
+                <img src="assets/welcome_circle.png" alt="Hands planting sapling">
+            </div>
+            <div class="event-empty__content">
+                <h3>No {{ showPastEvents ? 'past' : 'upcoming' }} events to show</h3>
+                <p>Try adjusting your filters or check back soon for new opportunities in your area.</p>
+                <button class="btn btn-success" (click)="clearFilters()">Reset Filters</button>
+                <button class="btn btn-outline-success" *ngIf="showPastEvents" (click)="togglePastEvents()">View
+                    Upcoming
+                    Events</button>
+            </div>
+        </div>
+    </ng-template>
+
+    <div *ngIf="loading" class="event-loading">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading events...</p>
+    </div>
+
+    <div *ngIf="error" class="event-error alert alert-danger card shadow-sm">
+        {{ error }}
+    </div>
+</div>

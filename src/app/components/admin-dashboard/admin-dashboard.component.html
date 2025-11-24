@@ -1,0 +1,460 @@
+<div class="admin-page" *ngIf="!isLoading; else loadingState">
+    <ng-container *ngIf="currentUser && currentUser.role === 'admin'; else accessDenied">
+        <section class="admin-hero card shadow-sm">
+            <div class="admin-hero__content">
+                <h1>Administrator Dashboard</h1>
+                <p>Monitor and manage the entire VolunteerSync ecosystem—users, organizations, and events—from a single
+                    place.</p>
+                <div class="admin-hero__metrics">
+                    <div class="metric-card">
+                        <span class="metric-card__label">Total Users</span>
+                        <span class="metric-card__value">{{ totalUsers }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-card__label">Organizations</span>
+                        <span class="metric-card__value">{{ totalOrganizations }}</span>
+                    </div>
+                    <div class="metric-card">
+                        <span class="metric-card__label">Active Events</span>
+                        <span class="metric-card__value">{{ upcomingEvents.length }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-hero__image">
+                <img src="assets/VS_Logo_Banner.png" alt="VolunteerSync banner">
+            </div>
+        </section>
+
+        <div *ngIf="success" class="admin-alert admin-alert--success">
+            <span><i class="bi bi-check-circle-fill me-2"></i>{{ success }}</span>
+            <button type="button" class="btn-close" (click)="success = ''"></button>
+        </div>
+        <div *ngIf="error" class="admin-alert admin-alert--error">
+            <span><i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}</span>
+            <button type="button" class="btn-close" (click)="error = ''"></button>
+        </div>
+
+        <section class="admin-tabs">
+            <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'users'"
+                (click)="activeTab = 'users'">
+                Users ({{ totalUsers }})
+            </button>
+            <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'organizations'"
+                (click)="activeTab = 'organizations'">
+                Organizations ({{ totalOrganizations }})
+            </button>
+            <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'events'"
+                (click)="activeTab = 'events'">
+                Events ({{ totalEvents }})
+            </button>
+        </section>
+
+        <section class="admin-card card shadow-sm" *ngIf="activeTab === 'users'">
+            <div class="admin-card__header">
+                <div>
+                    <h2>User Management</h2>
+                    <p>View, filter, and manage users across all roles.</p>
+                </div>
+                <div class="admin-filters">
+                    <div class="admin-filter">
+                        <label for="userSearch">Search</label>
+                        <input id="userSearch" type="text" [(ngModel)]="userSearchTerm"
+                            (ngModelChange)="applyUserFilters()" placeholder="Name or email">
+                    </div>
+                    <div class="admin-filter">
+                        <label for="userRole">Role</label>
+                        <select id="userRole" [(ngModel)]="userRoleFilter" (ngModelChange)="applyUserFilters()">
+                            <option value="all">All</option>
+                            <option value="admin">Admin</option>
+                            <option value="organizer">Organizer</option>
+                            <option value="volunteer">Volunteer</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="admin-table" *ngIf="filteredUsers.length > 0; else emptyUsers">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setUserSort('name')">
+                                    User <i class="bi" [ngClass]="getUserSortIcon('name')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setUserSort('email')">
+                                    Email <i class="bi" [ngClass]="getUserSortIcon('email')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setUserSort('role')">
+                                    Role <i class="bi" [ngClass]="getUserSortIcon('role')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setUserSort('organization')">
+                                    Organization <i class="bi" [ngClass]="getUserSortIcon('organization')"></i>
+                                </button>
+                            </th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let user of paginatedUsers">
+                            <td>{{ user.firstName }} {{ user.lastName }}</td>
+                            <td>{{ user.email }}</td>
+                            <td>
+                                <span class="badge" [ngClass]="{
+                                        'badge--role-admin': user.role === 'admin',
+                                        'badge--role-organizer': user.role === 'organizer',
+                                        'badge--role-volunteer': user.role === 'volunteer'
+                                    }">{{ user.role }}</span>
+                            </td>
+                            <td>{{ user.organizationId ? getOrganizationName(user.organizationId) : '—' }}</td>
+                            <td class="admin-table__actions">
+                                <button class="btn btn-outline-danger btn-sm" (click)="confirmDeleteUser(user)"><i
+                                        class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="admin-pagination">
+                    <div class="admin-pagination__size">
+                        <label for="userPageSize">Show</label>
+                        <select id="userPageSize" [(ngModel)]="userPageSize"
+                            (ngModelChange)="changeUserPageSize($event)">
+                            <option *ngFor="let size of userPageSizeOptions" [value]="size">{{ size }}</option>
+                        </select>
+                        <span>per page</span>
+                    </div>
+                    <div class="admin-pagination__controls">
+                        <button class="btn btn-outline-success btn-sm" (click)="goToUserPage(userCurrentPage - 1)"
+                            [disabled]="userCurrentPage === 1">Prev</button>
+                        <button *ngFor="let page of userPageNumbers" class="btn btn-sm admin-pagination__button"
+                            [ngClass]="{'btn-success text-white': page === userCurrentPage, 'btn-outline-success': page !== userCurrentPage}"
+                            (click)="goToUserPage(page)">{{ page }}</button>
+                        <button class="btn btn-outline-success btn-sm" (click)="goToUserPage(userCurrentPage + 1)"
+                            [disabled]="userCurrentPage === userTotalPages">Next</button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyUsers>
+                <div class="admin-alert admin-alert--muted">
+                    No users found.
+                </div>
+            </ng-template>
+        </section>
+
+        <section class="admin-card card shadow-sm" *ngIf="activeTab === 'organizations'">
+            <div class="admin-card__header">
+                <div>
+                    <h2>Organization Management</h2>
+                    <p>Review organizations and remove those that are no longer active.</p>
+                </div>
+                <div class="admin-filters">
+                    <div class="admin-filter">
+                        <label for="orgSearch">Search</label>
+                        <input id="orgSearch" type="text" [(ngModel)]="organizationSearchTerm"
+                            (ngModelChange)="applyOrganizationFilters()" placeholder="Name, description, contact">
+                    </div>
+                    <div class="admin-filter admin-filter--checkbox">
+                        <label class="form-check">
+                            <input type="checkbox" class="form-check-input" [(ngModel)]="organizationWebsiteOnly"
+                                (ngModelChange)="applyOrganizationFilters()">
+                            <span class="form-check-label">Has website</span>
+                        </label>
+                    </div>
+                    <div class="admin-filter">
+                        <label for="orgStatus">Status</label>
+                        <select id="orgStatus" [(ngModel)]="organizationApprovalStatusFilter"
+                            (ngModelChange)="applyOrganizationFilters()">
+                            <option value="all">All</option>
+                            <option value="approved">Approved</option>
+                            <option value="pending">Pending</option>
+                            <option value="rejected">Rejected</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-table" *ngIf="filteredOrganizations.length > 0; else emptyOrganizations">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setOrganizationSort('name')">
+                                    Name <i class="bi" [ngClass]="getOrganizationSortIcon('name')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setOrganizationSort('description')">
+                                    Description <i class="bi" [ngClass]="getOrganizationSortIcon('description')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setOrganizationSort('contact')">
+                                    Contact <i class="bi" [ngClass]="getOrganizationSortIcon('contact')"></i>
+                                </button>
+                            </th>
+                            <th>Status</th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let org of paginatedOrganizations">
+                            <td>{{ org.name }}</td>
+                            <td>{{ org.description }}</td>
+                            <td>{{ org.contactEmail }}</td>
+                            <td>
+                                <span [ngClass]="getApprovalStatusBadgeClass(org.approvalStatus)">
+                                    {{ org.approvalStatus || 'pending' | titlecase }}
+                                </span>
+                            </td>
+                            <td class="admin-table__actions">
+                                <div class="admin-table__actions-inner">
+                                    <div class="dropdown" [attr.id]="'orgDropdown' + org.organizationId">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
+                                            type="button" 
+                                            [id]="'orgDropdownBtn' + org.organizationId"
+                                            data-bs-toggle="dropdown" 
+                                            aria-expanded="false"
+                                            title="Actions">
+                                            <i class="bi bi-three-dots-vertical"></i>
+                                        </button>
+                                        <ul class="dropdown-menu" [attr.aria-labelledby]="'orgDropdownBtn' + org.organizationId">
+                                            <li *ngIf="org.approvalStatus !== 'approved'">
+                                                <a class="dropdown-item" 
+                                                    href="javascript:void(0)"
+                                                    (click)="approveOrganization(org); $event.preventDefault()">
+                                                    <i class="bi bi-check-circle text-success me-2"></i>Approve
+                                                </a>
+                                            </li>
+                                            <li *ngIf="org.approvalStatus !== 'rejected'">
+                                                <a class="dropdown-item" 
+                                                    href="javascript:void(0)"
+                                                    (click)="showRejectModal(org); $event.preventDefault()">
+                                                    <i class="bi bi-x-circle text-warning me-2"></i>Reject
+                                                </a>
+                                            </li>
+                                            <li *ngIf="org.approvalStatus !== 'pending'">
+                                                <a class="dropdown-item" 
+                                                    href="javascript:void(0)"
+                                                    (click)="setOrganizationToPending(org); $event.preventDefault()">
+                                                    <i class="bi bi-clock-history text-secondary me-2"></i>Set to Pending
+                                                </a>
+                                            </li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" 
+                                                    href="javascript:void(0)"
+                                                    (click)="confirmDeleteOrganization(org); $event.preventDefault()">
+                                                    <i class="bi bi-trash me-2"></i>Delete
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="admin-pagination">
+                    <div class="admin-pagination__size">
+                        <label for="orgPageSize">Show</label>
+                        <select id="orgPageSize" [(ngModel)]="organizationPageSize"
+                            (ngModelChange)="changeOrganizationPageSize($event)">
+                            <option *ngFor="let size of organizationPageSizeOptions" [value]="size">{{ size }}</option>
+                        </select>
+                        <span>per page</span>
+                    </div>
+                    <div class="admin-pagination__controls">
+                        <button class="btn btn-outline-success btn-sm"
+                            (click)="goToOrganizationPage(organizationCurrentPage - 1)"
+                            [disabled]="organizationCurrentPage === 1">Prev</button>
+                        <button *ngFor="let page of organizationPageNumbers" class="btn btn-sm admin-pagination__button"
+                            [ngClass]="{'btn-success text-white': page === organizationCurrentPage, 'btn-outline-success': page !== organizationCurrentPage}"
+                            (click)="goToOrganizationPage(page)">{{ page }}</button>
+                        <button class="btn btn-outline-success btn-sm"
+                            (click)="goToOrganizationPage(organizationCurrentPage + 1)"
+                            [disabled]="organizationCurrentPage === organizationTotalPages">Next</button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyOrganizations>
+                <div class="admin-alert admin-alert--muted">
+                    No organizations found.
+                </div>
+            </ng-template>
+        </section>
+
+        <section class="admin-card card shadow-sm" *ngIf="activeTab === 'events'">
+            <div class="admin-card__header">
+                <div>
+                    <h2>Event Management</h2>
+                    <p>Track events across organizations and remove outdated listings.</p>
+                </div>
+                <div class="admin-filters">
+                    <div class="admin-filter">
+                        <label for="eventSearch">Search</label>
+                        <input id="eventSearch" type="text" [(ngModel)]="eventSearchTerm"
+                            (ngModelChange)="applyEventFilters()" placeholder="Event or organization">
+                    </div>
+                    <div class="admin-filter">
+                        <label for="eventStatus">Status</label>
+                        <select id="eventStatus" [(ngModel)]="eventStatusFilter" (ngModelChange)="applyEventFilters()">
+                            <option value="all">All</option>
+                            <option value="upcoming">Upcoming</option>
+                            <option value="past">Past</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-table" *ngIf="filteredEvents.length > 0; else emptyEvents">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setEventSort('title')">
+                                    Event <i class="bi" [ngClass]="getEventSortIcon('title')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setEventSort('date')">
+                                    Date <i class="bi" [ngClass]="getEventSortIcon('date')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setEventSort('organization')">
+                                    Organization <i class="bi" [ngClass]="getEventSortIcon('organization')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setEventSort('status')">
+                                    Status <i class="bi" [ngClass]="getEventSortIcon('status')"></i>
+                                </button>
+                            </th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let event of paginatedEvents">
+                            <td>{{ event.title }}</td>
+                            <td>{{ event.eventDate }} {{ event.eventTime }}</td>
+                            <td>{{ getOrganizationName(event.organizationId) }}</td>
+                            <td>
+                                <span class="badge" [ngClass]="isEventInPast(event) ? 'bg-secondary' : 'bg-success'">
+                                    {{ isEventInPast(event) ? 'Past' : 'Upcoming' }}
+                                </span>
+                            </td>
+                            <td class="admin-table__actions">
+                                <button class="btn btn-outline-danger btn-sm" (click)="confirmDeleteEvent(event)"><i
+                                        class="bi bi-trash"></i></button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="admin-pagination">
+                    <div class="admin-pagination__size">
+                        <label for="eventPageSize">Show</label>
+                        <select id="eventPageSize" [(ngModel)]="eventPageSize"
+                            (ngModelChange)="changeEventPageSize($event)">
+                            <option *ngFor="let size of eventPageSizeOptions" [value]="size">{{ size }}</option>
+                        </select>
+                        <span>per page</span>
+                    </div>
+                    <div class="admin-pagination__controls">
+                        <button class="btn btn-outline-success btn-sm" (click)="goToEventPage(eventCurrentPage - 1)"
+                            [disabled]="eventCurrentPage === 1">Prev</button>
+                        <button *ngFor="let page of eventPageNumbers" class="btn btn-sm admin-pagination__button"
+                            [ngClass]="{'btn-success text-white': page === eventCurrentPage, 'btn-outline-success': page !== eventCurrentPage}"
+                            (click)="goToEventPage(page)">{{ page }}</button>
+                        <button class="btn btn-outline-success btn-sm" (click)="goToEventPage(eventCurrentPage + 1)"
+                            [disabled]="eventCurrentPage === eventTotalPages">Next</button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyEvents>
+                <div class="admin-alert admin-alert--muted">
+                    No events found.
+                </div>
+            </ng-template>
+        </section>
+
+        <!-- Delete confirmations -->
+        <div *ngIf="showDeleteUserConfirmation && selectedUser" class="admin-modal">
+            <div class="admin-modal__content">
+                <h3>Delete User</h3>
+                <p>Are you sure you want to remove <strong>{{ selectedUser.firstName }} {{ selectedUser.lastName
+                        }}</strong>? This action cannot be undone.</p>
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="cancelDeleteUser()">Cancel</button>
+                    <button class="btn btn-danger" (click)="deleteUser()">Delete User</button>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="showDeleteOrganizationConfirmation && selectedOrganization" class="admin-modal">
+            <div class="admin-modal__content">
+                <h3>Delete Organization</h3>
+                <p>Are you sure you want to remove <strong>{{ selectedOrganization.name }}</strong>? Associated events
+                    may also be deleted.</p>
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="cancelDeleteOrganization()">Cancel</button>
+                    <button class="btn btn-danger" (click)="deleteOrganization()">Delete Organization</button>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="showRejectOrganizationModal && selectedOrganization" class="admin-modal">
+            <div class="admin-modal__content">
+                <h3>Reject Organization</h3>
+                <p>Please provide a reason for rejecting <strong>{{ selectedOrganization.name }}</strong>. This reason will be visible to the organization.</p>
+                <div class="admin-modal__form">
+                    <label for="rejectionReason">Rejection Reason *</label>
+                    <textarea id="rejectionReason" 
+                        [(ngModel)]="rejectionReason" 
+                        rows="4" 
+                        maxlength="255"
+                        placeholder="Enter the reason for rejection..."
+                        class="form-control"></textarea>
+                    <small class="form-text text-muted">{{ rejectionReason.length }}/255 characters</small>
+                </div>
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="cancelRejectOrganization()">Cancel</button>
+                    <button class="btn btn-warning" 
+                        (click)="rejectOrganization()"
+                        [disabled]="!rejectionReason || rejectionReason.trim().length === 0">
+                        Reject Organization
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="showDeleteEventConfirmation && selectedEvent" class="admin-modal">
+            <div class="admin-modal__content">
+                <h3>Delete Event</h3>
+                <p>Remove <strong>{{ selectedEvent.title }}</strong>? Registrations will be permanently erased.</p>
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="cancelDeleteEvent()">Cancel</button>
+                    <button class="btn btn-danger" (click)="deleteEvent()">Delete Event</button>
+                </div>
+            </div>
+        </div>
+    </ng-container>
+</div>
+
+<ng-template #loadingState>
+    <div class="admin-loading">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Preparing admin dashboard…</p>
+    </div>
+</ng-template>
+
+<ng-template #accessDenied>
+    <div class="admin-alert admin-alert--error">
+        <p>This dashboard is restricted to administrators only.</p>
+        <a routerLink="/events" class="btn btn-success">Browse Events</a>
+    </div>
+</ng-template>

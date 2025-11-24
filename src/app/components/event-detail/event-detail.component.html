@@ -1,0 +1,181 @@
+<div class="event-detail-page">
+    <!-- Loading Indicator -->
+    <div *ngIf="loading" class="event-loading">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading event details...</p>
+    </div>
+
+    <!-- Error Message -->
+    <div *ngIf="error" class="alert alert-danger">
+        {{ error }}
+    </div>
+
+    <ng-container *ngIf="!loading && event">
+        <section class="event-hero card shadow-sm">
+            <div class="event-hero__image">
+                <img src="assets/VS_Logo_Banner.png" alt="VolunteerSync Event banner">
+            </div>
+            <div class="event-hero__content">
+                <div class="event-hero__status" [ngClass]="isPastEvent ? 'event-hero__status--past' : 'event-hero__status--upcoming'">
+                    <span class="status-indicator" [ngClass]="isPastEvent ? 'status-indicator--past' : 'status-indicator--upcoming'"></span>
+                    {{ isPastEvent ? 'Completed Event' : 'Upcoming Event' }}
+                </div>
+                <h1>{{ event.title }}</h1>
+                <p class="event-hero__summary">{{ event.description | slice:0:160 }}{{ event.description.length > 160 ? '…' : '' }}</p>
+
+                <div class="event-hero__meta">
+                    <div>
+                        <span class="event-hero__meta-label">Date</span>
+                        <span class="event-hero__meta-value"><i class="bi bi-calendar2-week me-2"></i>{{ event.eventDate | date:'fullDate' }}</span>
+                    </div>
+                    <div>
+                        <span class="event-hero__meta-label">Time</span>
+                        <span class="event-hero__meta-value"><i class="bi bi-clock-history me-2"></i>{{ event.eventTime }}</span>
+                    </div>
+                    <div>
+                        <span class="event-hero__meta-label">Location</span>
+                        <span class="event-hero__meta-value"><i class="bi bi-geo-alt me-2"></i>{{ event.locationName }}, {{ event.city }}, {{ event.state }}</span>
+                    </div>
+                    <div>
+                        <span class="event-hero__meta-label">Volunteers</span>
+                        <span class="event-hero__meta-value"><i class="bi bi-people me-2"></i>{{ event.numSignedUp || 0 }} / {{ event.numNeeded || 0 }}</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <div class="event-layout">
+            <div class="event-main card shadow-sm">
+                <section class="event-section">
+                    <h2>About this Event</h2>
+                    <p>{{ event.description }}</p>
+                </section>
+
+                <section class="event-section event-section--grid">
+                    <div>
+                        <h3>Schedule</h3>
+                        <ul class="event-list">
+                            <li><i class="bi bi-calendar-event"></i>{{ event.eventDate | date:'fullDate' }}</li>
+                            <li><i class="bi bi-clock"></i>{{ event.eventTime }}</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3>Location</h3>
+                        <ul class="event-list">
+                            <li><i class="bi bi-geo-alt"></i>{{ event.locationName }}</li>
+                            <li><i class="bi bi-building"></i>{{ event.address }}</li>
+                            <li><i class="bi bi-map"></i>{{ event.city }}, {{ event.state }}</li>
+                        </ul>
+                    </div>
+                </section>
+
+                <section class="event-section">
+                    <h3>Volunteer Capacity</h3>
+                    <div class="event-capacity">
+                        <div class="event-capacity__numbers">
+                            <span class="current">{{ event.numSignedUp || 0 }}</span>
+                            <span class="divider">/</span>
+                            <span class="total">{{ event.numNeeded || 0 }}</span>
+                            <span class="label">volunteers</span>
+                        </div>
+                        <div class="progress">
+                            <div class="progress-bar" [style.width]="((event.numSignedUp || 0) / (event.numNeeded || 1) * 100) + '%'">
+                                {{ ((event.numSignedUp || 0) / (event.numNeeded || 1) * 100) | number:'1.0-0' }}%
+                            </div>
+                        </div>
+                        <p class="event-capacity__remaining">Remaining spots: <strong>{{ (event.numNeeded || 0) - (event.numSignedUp || 0) }}</strong></p>
+                    </div>
+                </section>
+            </div>
+
+            <aside class="event-sidebar">
+                <div class="event-signup card shadow-sm">
+                    <h3 class="event-signup__title">Volunteer for this Event</h3>
+
+                    <div *ngIf="isPastEvent" class="event-signup__alert event-signup__alert--muted">
+                        <i class="bi bi-clock-history me-2"></i>This event has already taken place. Registration is closed.
+                    </div>
+
+                    <div *ngIf="signupSuccess && !isRegistered" class="event-signup__alert event-signup__alert--success">
+                        <i class="bi bi-check-circle-fill me-2"></i>You have successfully signed up for this event!
+                    </div>
+
+                    <div *ngIf="cancellationMessage" class="event-signup__alert event-signup__alert--info">
+                        <i class="bi bi-info-circle me-2"></i>{{ cancellationMessage }}
+                    </div>
+
+                    <div *ngIf="signupError" class="event-signup__alert event-signup__alert--error">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ signupError }}
+                    </div>
+
+                    <ng-container *ngIf="!isPastEvent">
+                        <div *ngIf="!isLoggedIn" class="event-signup__auth">
+                            <p>Log in or register to secure your spot.</p>
+                            <div class="d-grid gap-2">
+                                <a [routerLink]="['/login']" [queryParams]="{returnUrl: '/events/' + eventId}" class="btn btn-success">Log In</a>
+                                <a [routerLink]="['/register']" [queryParams]="{returnUrl: '/events/' + eventId}" class="btn btn-outline-success">Create Account</a>
+                            </div>
+                        </div>
+
+                        <div *ngIf="isLoggedIn">
+                            <div *ngIf="isRegistered" class="event-signup__alert event-signup__alert--success">
+                                <i class="bi bi-check-circle-fill me-2"></i>You are registered for this event!
+                            </div>
+
+                            <div *ngIf="isRegistered" class="d-grid gap-2">
+                                <button (click)="cancelRegistration()" class="btn btn-outline-danger">
+                                    <i class="bi bi-x-circle me-2"></i>Cancel Registration
+                                </button>
+                            </div>
+
+                            <div *ngIf="!isRegistered" class="event-signup__actions">
+                                <ng-container *ngIf="(event.numSignedUp || 0) < (event.numNeeded || 0); else eventFull">
+                                    <p>Ready to make a difference? Sign up now!</p>
+                                    <button (click)="signupForEvent()" class="btn btn-success btn-lg w-100">Sign Up Now</button>
+                                </ng-container>
+                                <ng-template #eventFull>
+                                    <div class="event-signup__alert event-signup__alert--warning">
+                                        <i class="bi bi-exclamation-diamond me-2"></i>This event is currently full. Check back later for openings.
+                                    </div>
+                                </ng-template>
+                            </div>
+                        </div>
+                    </ng-container>
+
+                    <div *ngIf="isLoggedIn && isPastEvent && isRegistered" class="event-signup__alert event-signup__alert--info mt-3">
+                        <i class="bi bi-emoji-smile me-2"></i>Thank you for serving! Your attendance has been recorded.
+                    </div>
+                </div>
+
+                <div *ngIf="organization" class="event-organization card shadow-sm">
+                    <h3>About the Organization</h3>
+                    <p class="event-organization__name">{{ organization.name }}</p>
+                    <p class="event-organization__description">{{ organization.description }}</p>
+
+                    <ul class="event-organization__details">
+                        <li><i class="bi bi-envelope"></i>{{ organization.contactEmail }}</li>
+                        <li *ngIf="organization.contactPhone"><i class="bi bi-telephone"></i>{{ organization.contactPhone }}</li>
+                        <li *ngIf="organization.website">
+                            <i class="bi bi-globe"></i>
+                            <a [href]="organization.website" target="_blank" rel="noopener">Visit Website</a>
+                        </li>
+                    </ul>
+
+                    <div class="d-grid">
+                        <a [routerLink]="['/events']" [queryParams]="{organizationId: organization.organizationId}" class="btn btn-outline-success">
+                            View More Events
+                        </a>
+                    </div>
+                </div>
+            </aside>
+        </div>
+
+        <div class="event-back">
+            <a [routerLink]="['/events']" class="btn btn-outline-secondary">
+                <i class="bi bi-arrow-left me-2"></i>Back to Events
+            </a>
+        </div>
+    </ng-container>
+</div>

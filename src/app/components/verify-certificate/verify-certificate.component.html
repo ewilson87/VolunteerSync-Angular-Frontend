@@ -1,0 +1,142 @@
+<div class="verify-page">
+    <section class="verify-hero card shadow-sm">
+        <div class="verify-hero__content">
+            <h1>Verify Certificate</h1>
+            <p>Enter a certificate verification code to confirm its authenticity and view volunteer service details.</p>
+        </div>
+    </section>
+
+    <section class="verify-form card shadow-sm">
+        <h2>Certificate Verification</h2>
+        <p class="verify-form__subtitle">Enter the 8-character verification code to verify a certificate. The system
+            will automatically format it for you.</p>
+
+        <form (ngSubmit)="onVerify()" class="verify-form__form">
+            <div class="verify-field">
+                <label for="verificationCode">Verification Code</label>
+                <div class="verify-code-input-group">
+                    <span class="verify-code-prefix">VS-</span>
+                    <input type="text" id="codePart1" name="codePart1" [(ngModel)]="codePart1"
+                        (input)="onPart1Input($event)" placeholder="XXXX" maxlength="4"
+                        class="form-control verify-code-input-part1" [class.is-invalid]="errorMessage && hasSearched"
+                        [disabled]="isVerifying" required>
+                    <span class="verify-code-separator">-</span>
+                    <input type="text" id="codePart2" name="codePart2" [(ngModel)]="codePart2"
+                        (input)="onPart2Input($event)" placeholder="XXXX" maxlength="4"
+                        class="form-control verify-code-input-part2" [class.is-invalid]="errorMessage && hasSearched"
+                        [disabled]="isVerifying" required>
+                </div>
+                <div class="form-text">Enter the 8-character code in two parts</div>
+            </div>
+
+            <div class="verify-actions">
+                <button type="submit" class="btn btn-success btn-lg"
+                    [disabled]="isVerifying || codePart1.length !== 4 || codePart2.length !== 4">
+                    <span *ngIf="!isVerifying">Verify Certificate</span>
+                    <span *ngIf="isVerifying">
+                        <span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Verifying...
+                    </span>
+                </button>
+                <button type="button" class="btn btn-outline-secondary btn-lg" (click)="reset()" *ngIf="hasSearched">
+                    Clear
+                </button>
+            </div>
+        </form>
+
+        <div *ngIf="errorMessage && hasSearched" class="verify-alert verify-alert--error">
+            <div class="verify-alert__icon">
+                <i class="bi bi-exclamation-triangle-fill"></i>
+            </div>
+            <div class="verify-alert__content">
+                <strong>Verification Failed</strong>
+                <p>{{ errorMessage }}</p>
+            </div>
+        </div>
+    </section>
+
+    <section *ngIf="verificationResult" class="verify-result card shadow-sm">
+        <div class="verify-result__header">
+            <div class="verify-result__badge">
+                <i class="bi bi-shield-check-fill"></i>
+                <span>Verified Certificate</span>
+            </div>
+            <h2>Certificate Verified</h2>
+            <p class="verify-result__subtitle">This certificate has been verified and is authentic.</p>
+        </div>
+
+        <div class="verify-result__content">
+            <div class="verify-result__section">
+                <h3>Volunteer Information</h3>
+                <div class="verify-result__grid">
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Name</span>
+                        <span class="verify-result__value">{{ verificationResult.volunteerName || 'N/A' }}</span>
+                    </div>
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Email</span>
+                        <span class="verify-result__value">{{ verificationResult.volunteerEmail || 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="verify-result__section">
+                <h3>Event Information</h3>
+                <div class="verify-result__grid">
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Event Name</span>
+                        <span class="verify-result__value">{{ verificationResult.eventName || 'N/A' }}</span>
+                    </div>
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Event Date</span>
+                        <span class="verify-result__value">{{ formatDateTime(verificationResult.eventDate,
+                            verificationResult.eventTime) }}</span>
+                    </div>
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Organization</span>
+                        <span class="verify-result__value">{{ verificationResult.organizationName || 'N/A' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="verify-result__section">
+                <h3>Service Details</h3>
+                <div class="verify-result__grid">
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Hours Completed</span>
+                        <span class="verify-result__value">{{ verificationResult.hours !== null &&
+                            verificationResult.hours !== undefined ? verificationResult.hours + ' hours' : 'N/A'
+                            }}</span>
+                    </div>
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Attendance Status</span>
+                        <span class="verify-result__value">
+                            <span class="badge bg-success"
+                                *ngIf="verificationResult.attendanceStatus === 'completed'">Attended</span>
+                            <span class="badge bg-warning"
+                                *ngIf="verificationResult.attendanceStatus === 'excused'">Excused</span>
+                            <span class="badge bg-secondary"
+                                *ngIf="!verificationResult.attendanceStatus || verificationResult.attendanceStatus !== 'completed' && verificationResult.attendanceStatus !== 'excused'">
+                                {{ verificationResult.attendanceStatus || 'N/A' }}
+                            </span>
+                        </span>
+                    </div>
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Certificate Issued</span>
+                        <span class="verify-result__value">{{ formatDate(verificationResult.issuedAt) }}</span>
+                    </div>
+                    <div class="verify-result__field">
+                        <span class="verify-result__label">Verification Code</span>
+                        <span class="verify-result__value verify-result__code">{{ verificationResult.certificateUid
+                            }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="verify-result__footer">
+            <button type="button" class="btn btn-outline-secondary" (click)="reset()">Verify Another
+                Certificate</button>
+        </div>
+    </section>
+</div>

@@ -1,0 +1,137 @@
+<div class="welcome-page">
+    <section class="hero-section card shadow-sm">
+        <div class="hero-grid">
+            <div class="hero-copy">
+                <span class="hero-pill text-uppercase">Community powered</span>
+                <h1><span class="hero-intro">{{ title }}</span> VolunteerSync</h1>
+                <p class="hero-subheading">Connect. Serve. Make a Difference.</p>
+                <p class="hero-description">
+                    Simplifying community volunteerism for everyone. Discover meaningful opportunities, stay organized,
+                    and build verifiable service records that highlight your impact.
+                </p>
+                <div class="hero-ctas">
+                    <a class="btn btn-success btn-lg me-3" routerLink="/events">Explore Opportunities</a>
+                    <ng-container *ngIf="!isLoggedIn; else loggedInCtas">
+                        <a class="btn btn-outline-light btn-lg" routerLink="/register" [queryParams]="{ role: 'volunteer' }">Join as Volunteer</a>
+                    </ng-container>
+                    <ng-template #loggedInCtas>
+                        <a class="btn btn-outline-light btn-lg" routerLink="/profile">Go to My Dashboard</a>
+                    </ng-template>
+                </div>
+                <ul class="hero-highlights">
+                    <li><i class="bi bi-check-circle"></i> Search and filter local events</li>
+                    <li><i class="bi bi-check-circle"></i> Track verified service hours</li>
+                    <li><i class="bi bi-check-circle"></i> Generate certificates on completion</li>
+                </ul>
+            </div>
+            <div class="hero-visual">
+                <div class="hero-media">
+                    <img src="assets/welcome_landscape.png" alt="Volunteers working together in a garden"
+                        class="hero-image">
+                    <img src="assets/welcome_circle.png" alt="Close-up of hands planting a sapling" class="hero-circle">
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="overview-section">
+        <div class="overview-card card shadow-sm">
+            <div class="overview-text">
+                <h2>Welcome to VolunteerSync</h2>
+                <p>
+                    VolunteerSync connects organizers, volunteers, and communities through a single hub for verified
+                    service. Browse opportunities by date, location, or mission, sign up in seconds, and receive
+                    reminders
+                    so you never miss a chance to help.
+                </p>
+                <p>
+                    After each event, organizers certify attendance and hours, giving you a growing record of service
+                    that's
+                    ready to share with schools, employers, or scholarship programs.
+                </p>
+                <div class="overview-actions">
+                    <ng-container *ngIf="!isLoggedIn; else overviewLoggedIn">
+                        <a class="btn btn-outline-success me-3" routerLink="/register">Create Your Account</a>
+                        <a class="btn btn-outline-secondary" routerLink="/organizations">Discover Organizations</a>
+                    </ng-container>
+                    <ng-template #overviewLoggedIn>
+                        <a class="btn btn-outline-success me-3" routerLink="/events">Find Upcoming Events</a>
+                        <a class="btn btn-outline-secondary" routerLink="/profile">Manage My Profile</a>
+                    </ng-template>
+                </div>
+            </div>
+            <div class="overview-visual">
+                <img src="assets/Welcome_celebrate.png" alt="Group of volunteers celebrating" class="overview-image">
+            </div>
+        </div>
+
+        <div class="mission-card card shadow-sm">
+            <h3>Our Story &amp; Mission</h3>
+            <p>
+                Rooted in a servant-hearted worldview, we promote honest recordkeeping, ethical stewardship of user
+                data,
+                and accessible volunteer experiences for every community. VolunteerSync brings transparency to service
+                by
+                uniting trustworthy organizations with people ready to make a difference.
+            </p>
+            <div class="mission-grid">
+                <div class="mission-item">
+                    <i class="bi bi-shield-check"></i>
+                    <span>Verified opportunities and organizations</span>
+                </div>
+                <div class="mission-item">
+                    <i class="bi bi-graph-up-arrow"></i>
+                    <span>Dashboards to visualize your impact</span>
+                </div>
+                <div class="mission-item">
+                    <i class="bi bi-envelope-heart"></i>
+                    <span>Timely reminders and certificates via email</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="how-it-works card shadow-sm">
+        <h3>How It Works</h3>
+        <div class="how-grid">
+            <div class="how-card">
+                <div class="icon-wrapper">
+                    <i class="bi bi-search"></i>
+                </div>
+                <h4>Volunteers</h4>
+                <p>Search and filter events, sign up instantly, receive reminders, and track verified service hours.</p>
+                <a routerLink="/events" class="btn btn-outline-success btn-sm">Start Exploring</a>
+            </div>
+            <div class="how-card">
+                <div class="icon-wrapper">
+                    <i class="bi bi-calendar-event"></i>
+                </div>
+                <h4>Organizers</h4>
+                <p>Post opportunities, manage capacity, and mark attendance to generate official certificates.</p>
+                <a routerLink="/support" class="btn btn-outline-success btn-sm">Organizer Resources</a>
+            </div>
+            <div class="how-card">
+                <div class="icon-wrapper">
+                    <i class="bi bi-patch-check"></i>
+                </div>
+                <h4>Admins &amp; Verifiers</h4>
+                <p>Approve organizations, monitor system health, and verify certificates with one secure lookup.</p>
+                <a routerLink="/support" class="btn btn-outline-success btn-sm">Learn More</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="callout-section card shadow-sm" *ngIf="!isLoggedIn">
+        <div class="callout-content">
+            <h3>Join the VolunteerSync Community Today</h3>
+            <p>
+                Whether you lead events or love serving, VolunteerSync keeps every hour organized and verifiable. Let's
+                build stronger neighborhoods together.
+            </p>
+        </div>
+        <div class="callout-actions">
+            <a class="btn btn-success btn-lg me-3" routerLink="/register" [queryParams]="{ role: 'volunteer' }">Volunteer Sign Up</a>
+            <a class="btn btn-outline-light btn-lg" routerLink="/register" [queryParams]="{ role: 'organizer' }">Organizer Sign Up</a>
+        </div>
+    </section>
+</div>

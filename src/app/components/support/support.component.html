@@ -1,0 +1,172 @@
+<div class="support-page">
+    <section class="support-hero card shadow-sm">
+        <div class="support-hero__content">
+            <h1>We’re here to help</h1>
+            <p>Whether you need a hand getting started or want to report an issue, our team is ready to support your
+                volunteer journey.</p>
+            <div class="support-hero__meta">
+                <span><i class="bi bi-clock-history"></i> Average response time: under 24 hours</span>
+                <span><i class="bi bi-headset"></i> Dedicated organizer &amp; volunteer assistance</span>
+            </div>
+        </div>
+        <div class="support-hero__visual">
+            <div class="support-hero__orb"></div>
+            <div class="support-hero__icon"><i class="bi bi-chat-left-heart"></i></div>
+        </div>
+    </section>
+
+    <section class="support-grid">
+        <div class="support-card support-card--form card shadow-sm">
+            <div class="support-card__header">
+                <h2>Send us a message</h2>
+                <p>Complete the form and we’ll follow up with next steps.</p>
+            </div>
+
+            <div *ngIf="submitted" class="support-alert support-alert--success">
+                <div class="support-alert__icon"><i class="bi bi-check-circle"></i></div>
+                <div>
+                    <h3>Message sent successfully</h3>
+                    <p>Thanks for reaching out! We’ll respond to {{ lastSubmittedEmail || 'your email' }} shortly.</p>
+                    <button type="button" class="btn btn-link p-0" (click)="submitted = false">Send another
+                        message</button>
+                </div>
+            </div>
+
+            <form *ngIf="!submitted" (ngSubmit)="onSubmit()" class="support-form">
+                <div *ngIf="errorMessage" class="support-alert support-alert--error">
+                    <div class="support-alert__icon"><i class="bi bi-exclamation-triangle"></i></div>
+                    <div>
+                        <p>{{ errorMessage }}</p>
+                    </div>
+                </div>
+                <div class="support-form__row">
+                    <div class="support-field">
+                        <label for="name">Your Name</label>
+                        <input type="text" id="name" name="name" [(ngModel)]="contactForm.name" maxlength="100" required
+                            placeholder="" />
+                    </div>
+                    <div class="support-field">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" [(ngModel)]="contactForm.email" maxlength="100" required
+                            placeholder="" />
+                    </div>
+                </div>
+                <div class="support-field">
+                    <label for="subject">Subject</label>
+                    <input type="text" id="subject" name="subject" [(ngModel)]="contactForm.subject" maxlength="150" required
+                        placeholder="" />
+                </div>
+                <div class="support-field">
+                    <label for="message">Message</label>
+                    <textarea id="message" name="message" rows="5" [(ngModel)]="contactForm.message" maxlength="65535" required
+                        placeholder="Tell us how we can help"></textarea>
+                </div>
+                <div class="support-actions">
+                    <button type="submit" class="btn btn-success btn-lg" [disabled]="isSubmitting">
+                        {{ isSubmitting ? 'Sending...' : 'Send Message' }}
+                    </button>
+                    <span class="support-actions__meta">We'll email you a copy for your records.</span>
+                </div>
+            </form>
+        </div>
+
+        <div class="support-card support-card--info card shadow-sm">
+            <div class="support-card__header">
+                <h2>Contact options</h2>
+                <p>Reach us directly or explore resources tailored to your role.</p>
+            </div>
+            <div class="support-contact">
+                <div class="support-contact__item">
+                    <div class="support-contact__icon"><i class="bi bi-envelope-paper"></i></div>
+                    <div>
+                        <h3>Email</h3>
+                        <p>support&#64;volunteersync.org</p>
+                    </div>
+                </div>
+                <div class="support-contact__item">
+                    <div class="support-contact__icon"><i class="bi bi-telephone"></i></div>
+                    <div>
+                        <h3>Phone</h3>
+                        <p>(123) 456-7890</p>
+                        <span class="support-contact__note">Mon–Fri · 9am – 5pm MST</span>
+                    </div>
+                </div>
+                <div class="support-contact__item">
+                    <div class="support-contact__icon"><i class="bi bi-chat-dots"></i></div>
+                    <div>
+                        <h3>Live Chat</h3>
+                        <p>Available weekdays 10am – 4pm</p>
+                    </div>
+                </div>
+            </div>
+            <div class="support-highlights">
+                <div class="support-highlight">
+                    <i class="bi bi-people"></i>
+                    <div>
+                        <h4>Organizers</h4>
+                        <p>Guides on creating, managing, and verifying community events.</p>
+                        <a routerLink="/organizer" class="support-link">Visit organizer dashboard</a>
+                    </div>
+                </div>
+                <div class="support-highlight">
+                    <i class="bi bi-hand-thumbs-up"></i>
+                    <div>
+                        <h4>Volunteers</h4>
+                        <p>Tips for finding events, tracking hours, and viewing certificates.</p>
+                        <a routerLink="/events" class="support-link">Explore volunteer resources</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="support-resources card shadow-sm">
+        <h2>Helpful resources</h2>
+        <div class="support-resource-grid">
+            <div class="support-resource">
+                <i class="bi bi-journal-text"></i>
+                <h3>Knowledge Base</h3>
+                <p>Step-by-step walkthroughs, FAQs, and best practices for every role.</p>
+                <a class="support-link" routerLink="/support" [queryParams]="{ section: 'kb' }">Browse articles</a>
+            </div>
+            <div class="support-resource">
+                <i class="bi bi-calendar2-check"></i>
+                <h3>Event Playbook</h3>
+                <p>Download templates and checklists to plan successful volunteer events.</p>
+                <a class="support-link" href="assets/resources/volunteersync-event-playbook.pdf" target="_blank"
+                    rel="noopener">
+                    Download playbook
+                </a>
+            </div>
+            <div class="support-resource">
+                <i class="bi bi-shield-check"></i>
+                <h3>Compliance &amp; Safety</h3>
+                <p>Review our data privacy commitments and site-wide safety guidelines.</p>
+                <a class="support-link" routerLink="/support" [queryParams]="{ section: 'compliance' }">Review
+                    policies</a>
+            </div>
+        </div>
+    </section>
+
+    <section class="support-faq card shadow-sm">
+        <h2>Frequently asked questions</h2>
+        <div class="support-faq__items">
+            <details>
+                <summary>How quickly does VolunteerSync respond to support requests?</summary>
+                <p>We respond to most inquiries within 24 hours on business days. Organizer priority requests receive a
+                    same-business-day follow-up.</p>
+            </details>
+            <details>
+                <summary>Where can I see the status of my submitted events?</summary>
+                <p>Organizers can view pending, approved, and completed events directly in the organizer dashboard.
+                    You’ll
+                    also receive email updates when an event status changes.</p>
+            </details>
+            <details>
+                <summary>How do volunteers track their verified hours?</summary>
+                <p>Volunteer hours appear in your profile once the event organizer confirms attendance. You can export a
+                    certificate at any time from the “My Impact” tab.</p>
+            </details>
+        </div>
+    </section>
+</div>

@@ -1,0 +1,30 @@
+<div class="error-page">
+    <div class="error-card card shadow-sm">
+        <div class="error-card__badge error-card__badge--warning">
+            <span class="error-card__code">500</span>
+            <span class="error-card__label">Server Error</span>
+        </div>
+        <h1 class="error-card__title">Something went wrong on our side.</h1>
+        <p class="error-card__message">
+            Our team has been notified and is already investigating. In the meantime, you can return to your dashboard,
+            explore upcoming events, or reach out if you need assistance.
+        </p>
+        <div class="error-card__actions">
+            <a routerLink="/" class="btn btn-success btn-lg">
+                <i class="bi bi-arrow-counterclockwise me-2"></i>Refresh Home
+            </a>
+            <a routerLink="/support" class="btn btn-outline-success btn-lg">
+                <i class="bi bi-life-preserver me-2"></i>Contact Support
+            </a>
+        </div>
+        <div class="error-card__links">
+            <span>Prefer to keep browsing?</span>
+            <a routerLink="/events" class="error-card__link">See upcoming events</a>
+        </div>
+    </div>
+    <div class="error-visual">
+        <div class="error-visual__orb error-visual__orb--warning"></div>
+        <div class="error-visual__ring error-visual__ring--warning"></div>
+        <div class="error-visual__icon error-visual__icon--warning"><i class="bi bi-gear-fill"></i></div>
+    </div>
+</div>

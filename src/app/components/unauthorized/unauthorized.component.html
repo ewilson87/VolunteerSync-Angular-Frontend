@@ -1,0 +1,27 @@
+<div class="error-page">
+    <div class="error-card card shadow-sm">
+        <div class="error-card__badge">
+            <span class="error-card__code">401</span>
+            <span class="error-card__label">Sign in required</span>
+        </div>
+        <h1 class="error-card__title">Please log in to continue.</h1>
+        <p class="error-card__message">{{ message }}</p>
+        <div class="error-card__actions">
+            <a routerLink="/login" [queryParams]="{ returnUrl: returnUrl }" class="btn btn-success btn-lg">
+                <i class="bi bi-box-arrow-in-right me-2"></i>Go to Login
+            </a>
+            <a routerLink="/register" class="btn btn-outline-success btn-lg">
+                <i class="bi bi-person-plus me-2"></i>Create an Account
+            </a>
+        </div>
+        <div class="error-card__links">
+            <span>Looking for opportunities?</span>
+            <a routerLink="/events" class="error-card__link">Browse events instead</a>
+        </div>
+    </div>
+    <div class="error-visual">
+        <div class="error-visual__orb"></div>
+        <div class="error-visual__ring"></div>
+        <div class="error-visual__icon"><i class="bi bi-shield-lock"></i></div>
+    </div>
+</div>

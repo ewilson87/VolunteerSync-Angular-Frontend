@@ -1,0 +1,337 @@
+<div class="profile-page" *ngIf="!isLoading; else loadingState">
+    <ng-container *ngIf="user; else notLoggedIn">
+        <section class="profile-hero card shadow-sm">
+            <div class="profile-hero__content">
+                <div class="profile-hero__badge">
+                    <span>{{ user.role | titlecase }}</span>
+                    <i class="bi" [ngClass]="user.role === 'organizer' ? 'bi-building' : 'bi-people'"></i>
+                </div>
+                <h1>{{ user.firstName }} {{ user.lastName }}</h1>
+                <p class="profile-hero__subtitle">{{ user.email }}</p>
+                <div class="profile-hero__stats">
+                    <div>
+                        <span class="profile-hero__stats-label">Member Since </span>
+                        <span class="profile-hero__stats-value">{{ user.createdAt ? (user.createdAt | date:'MMMM yyyy')
+                            : 'N/A' }}</span>
+                    </div>
+                    <div>
+                        <span class="profile-hero__stats-label">Upcoming Events </span>
+                        <span class="profile-hero__stats-value">{{ upcomingEvents.length }}</span>
+                    </div>
+                    <div>
+                        <span class="profile-hero__stats-label">Completed Events </span>
+                        <span class="profile-hero__stats-value">{{ pastEvents.length }}</span>
+                    </div>
+                </div>
+            </div>
+            <div class="profile-hero__actions">
+                <button class="btn btn-outline-light" (click)="startEditingProfile()"
+                    *ngIf="canEditProfile && !isEditingProfile">Edit Profile</button>
+                <button class="btn btn-light" (click)="showChangePassword()"
+                    *ngIf="canEditProfile && !showPasswordChange">Change Password</button>
+            </div>
+        </section>
+
+        <section class="profile-content">
+            <div class="profile-columns">
+                <div class="profile-card card shadow-sm">
+                    <h2>Personal Information</h2>
+
+                    <div *ngIf="error" class="profile-alert profile-alert--error">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+                    </div>
+                    <div *ngIf="success" class="profile-alert profile-alert--success">
+                        <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
+                    </div>
+
+                    <div *ngIf="!isEditingProfile; else editProfileForm" class="profile-summary">
+                        <dl>
+                            <div>
+                                <dt>Name</dt>
+                                <dd>{{ user.firstName }} {{ user.lastName }}</dd>
+                            </div>
+                            <div>
+                                <dt>Email</dt>
+                                <dd>{{ user.email }}</dd>
+                            </div>
+                            <div>
+                                <dt>Role</dt>
+                                <dd>{{ user.role | titlecase }}</dd>
+                            </div>
+                            <div *ngIf="user.lastLogin">
+                                <dt>Last Login</dt>
+                                <dd>{{ user.lastLogin | date:'medium' }}</dd>
+                            </div>
+                        </dl>
+                        <button class="btn btn-outline-success" (click)="startEditingProfile()"
+                            *ngIf="canEditProfile">Edit Profile</button>
+                    </div>
+
+                    <ng-template #editProfileForm>
+                        <form (ngSubmit)="saveProfile()" class="profile-form">
+                            <div class="profile-field">
+                                <label for="firstName">First Name</label>
+                                <input type="text" id="firstName" [(ngModel)]="editableUser!.firstName" name="firstName"
+                                    maxlength="50" required>
+                            </div>
+                            <div class="profile-field">
+                                <label for="lastName">Last Name</label>
+                                <input type="text" id="lastName" [(ngModel)]="editableUser!.lastName" name="lastName"
+                                    maxlength="50" required>
+                            </div>
+                            <div class="profile-field">
+                                <label for="email">Email</label>
+                                <input type="email" id="email" [(ngModel)]="editableUser!.email" name="email"
+                                    maxlength="100" required>
+                            </div>
+
+                            <div class="profile-actions">
+                                <button type="button" class="btn btn-outline-secondary"
+                                    (click)="cancelEditingProfile()">Cancel</button>
+                                <button type="submit" class="btn btn-success">Save Changes</button>
+                            </div>
+                        </form>
+                    </ng-template>
+
+                    <div class="profile-password" *ngIf="canEditProfile && showPasswordChange">
+                        <h3>Change Password</h3>
+                        <div *ngIf="passwordError" class="profile-alert profile-alert--error">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ passwordError }}
+                        </div>
+                        <form (ngSubmit)="saveNewPassword()" class="profile-form">
+                            <div class="profile-field">
+                                <label for="currentPassword">Current Password</label>
+                                <input type="password" id="currentPassword" [(ngModel)]="currentPassword"
+                                    name="currentPassword" required>
+                            </div>
+                            <div class="profile-field">
+                                <label for="newPassword">New Password</label>
+                                <input type="password" id="newPassword" [(ngModel)]="newPassword" name="newPassword"
+                                    maxlength="100" minlength="8" required>
+                                <small class="form-text">
+                                    <strong>Password Requirements:</strong><br>
+                                    • Must be between 8 and 100 characters<br>
+                                    • Must contain at least one uppercase letter (A-Z)<br>
+                                    • Must contain at least one lowercase letter (a-z)<br>
+                                    • Must contain at least one number (0-9)<br>
+                                    • Must contain at least one special character (&#64;$!%*?&)
+                                </small>
+                            </div>
+                            <div class="profile-field">
+                                <label for="confirmPassword">Confirm New Password</label>
+                                <input type="password" id="confirmPassword" [(ngModel)]="confirmPassword"
+                                    name="confirmPassword" maxlength="100" required>
+                            </div>
+                            <div class="profile-actions">
+                                <button type="button" class="btn btn-outline-secondary"
+                                    (click)="cancelChangePassword()">Cancel</button>
+                                <button type="submit" class="btn btn-success">Update Password</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="profile-card card shadow-sm" *ngIf="isOrganizer && !isViewingOtherUser">
+                    <h2>Organizer Tools</h2>
+                    <p class="profile-card__description">Manage your organization and events through the dedicated
+                        dashboard.</p>
+                    <div class="profile-card__actions">
+                        <a routerLink="/organizer" class="btn btn-outline-success">
+                            <i class="bi bi-speedometer2 me-2"></i>Go to Organizer Dashboard
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="profile-events card shadow-sm">
+                <div class="profile-events__header">
+                    <div>
+                        <h2>My Event Registrations</h2>
+                        <p>Review upcoming commitments and completed events.</p>
+                    </div>
+                    <a routerLink="/events" class="btn btn-outline-success">Browse More Events</a>
+                </div>
+
+                <div class="profile-alert profile-alert--muted" *ngIf="loadingEvents">
+                    <div class="spinner-border text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <span>Loading your events…</span>
+                </div>
+
+                <div class="profile-alert profile-alert--error" *ngIf="eventsError">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ eventsError }}
+                </div>
+
+                <div class="profile-tabs" *ngIf="!loadingEvents">
+                    <div class="profile-tabs__nav">
+                        <button type="button" class="profile-tabs__button"
+                            [class.active]="activeEventTab === 'upcoming'" (click)="activeEventTab = 'upcoming'">
+                            Upcoming ({{ upcomingEvents.length }})
+                        </button>
+                        <button type="button" class="profile-tabs__button" [class.active]="activeEventTab === 'past'"
+                            (click)="activeEventTab = 'past'">
+                            Past ({{ pastEvents.length }})
+                        </button>
+                    </div>
+
+                    <div class="profile-tabs__content">
+                        <div *ngIf="activeEventTab === 'upcoming'">
+                            <ng-container *ngIf="upcomingEvents.length > 0; else noUpcoming">
+                                <div class="profile-event-list">
+                                    <div class="profile-event" *ngFor="let event of upcomingEvents">
+                                        <div class="profile-event__body">
+                                            <h3>{{ event.title }}</h3>
+                                            <p>{{ event.description }}</p>
+                                            <ul class="profile-event__meta">
+                                                <li><i class="bi bi-calendar-event"></i>{{ event.eventDate |
+                                                    date:'fullDate' }} at {{ event.eventTime }}</li>
+                                                <li><i class="bi bi-geo-alt"></i>{{ event.locationName }}, {{ event.city
+                                                    }} {{ event.state }}</li>
+                                                <li><i class="bi bi-calendar-check"></i>Signed up {{ event.signupDate |
+                                                    date:'mediumDate' }}</li>
+                                            </ul>
+                                        </div>
+                                        <div class="profile-event__actions">
+                                            <a [routerLink]="['/events', event.eventId]"
+                                                class="btn btn-outline-success">View Details</a>
+                                            <button class="btn btn-outline-danger"
+                                                (click)="cancelSignup(event.signupId!)"
+                                                *ngIf="canManageRegistrations">Cancel Registration</button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ng-container>
+                            <ng-template #noUpcoming>
+                                <div class="profile-alert profile-alert--muted">No upcoming events yet. Time to serve!
+                                </div>
+                            </ng-template>
+                        </div>
+
+                        <div *ngIf="activeEventTab === 'past'">
+                            <ng-container *ngIf="pastEvents.length > 0; else noPast">
+                                <div class="profile-event-list">
+                                    <div class="profile-event profile-event--past" *ngFor="let event of pastEvents">
+                                        <div class="profile-event__body">
+                                            <h3>{{ event.title }}</h3>
+                                            <p>{{ event.description }}</p>
+                                            <ul class="profile-event__meta">
+                                                <li><i class="bi bi-calendar-event"></i>{{ event.eventDate |
+                                                    date:'fullDate' }} at {{ event.eventTime }}</li>
+                                                <li><i class="bi bi-geo-alt"></i>{{ event.locationName }}, {{ event.city
+                                                    }} {{ event.state }}</li>
+                                                <li><i class="bi bi-calendar-check"></i>Signed up {{ event.signupDate |
+                                                    date:'mediumDate' }}</li>
+                                            </ul>
+                                        </div>
+                                        <div class="profile-event__actions">
+                                            <a [routerLink]="['/events', event.eventId]"
+                                                class="btn btn-outline-secondary">View Details</a>
+                                        </div>
+                                    </div>
+                                </div>
+                            </ng-container>
+                            <ng-template #noPast>
+                                <div class="profile-alert profile-alert--muted">No past events recorded yet.</div>
+                            </ng-template>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Certificates Section -->
+                <div class="profile-card card shadow-sm">
+                    <h2>My Certificates</h2>
+                    <p class="profile-card__subtitle">View and download your volunteer service certificates</p>
+
+                    <div *ngIf="certificatesError" class="profile-alert profile-alert--error">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ certificatesError }}
+                    </div>
+
+                    <div *ngIf="loadingCertificates" class="profile-loading">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Loading certificates…</p>
+                    </div>
+
+                    <div *ngIf="!loadingCertificates && userCertificates.length === 0"
+                        class="profile-alert profile-alert--muted">
+                        <i class="bi bi-info-circle me-2"></i>No certificates yet. Complete volunteer events to earn
+                        certificates!
+                    </div>
+
+                    <div *ngIf="!loadingCertificates && userCertificates.length > 0" class="profile-certificates">
+                        <div class="profile-certificate" *ngFor="let certificate of userCertificates">
+                            <div class="profile-certificate__header">
+                                <div class="profile-certificate__badge">
+                                    <i class="bi bi-award-fill"></i>
+                                    <span>Certificate of Service</span>
+                                </div>
+                                <button class="btn btn-success btn-sm" (click)="downloadCertificateAsPDF(certificate)">
+                                    <i class="bi bi-download me-1"></i>Download PDF
+                                </button>
+                            </div>
+                            <div class="profile-certificate__body">
+                                <h3>{{ certificate.eventName || certificate.title || 'Volunteer Service' }}</h3>
+                                <div class="profile-certificate__details">
+                                    <div class="profile-certificate__detail">
+                                        <span class="profile-certificate__label">Event Date:</span>
+                                        <span class="profile-certificate__value">{{
+                                            formatCertificateDateTime(certificate.eventDate, certificate.eventTime)
+                                            }}</span>
+                                    </div>
+                                    <div class="profile-certificate__detail">
+                                        <span class="profile-certificate__label">Hours Completed:</span>
+                                        <span class="profile-certificate__value">
+                                            {{ certificate.hours !== null && certificate.hours !== undefined ?
+                                            certificate.hours + ' hours' : 'N/A' }}
+                                        </span>
+                                    </div>
+                                    <div class="profile-certificate__detail">
+                                        <span class="profile-certificate__label">Organization:</span>
+                                        <span class="profile-certificate__value">{{ certificate.organizationName ||
+                                            certificate.organization?.name || 'N/A' }}</span>
+                                    </div>
+                                    <div class="profile-certificate__detail">
+                                        <span class="profile-certificate__label">Issued:</span>
+                                        <span class="profile-certificate__value">{{
+                                            formatCertificateDate(certificate.issuedAt || certificate.issued_at)
+                                            }}</span>
+                                    </div>
+                                    <div class="profile-certificate__detail">
+                                        <span class="profile-certificate__label">Verification Code:</span>
+                                        <span class="profile-certificate__code">{{ certificate.certificateUid ||
+                                            certificate.certificate_uid || 'N/A' }}</span>
+                                    </div>
+                                </div>
+                                <div class="profile-certificate__verify">
+                                    <a [routerLink]="['/verify']"
+                                        [queryParams]="{ code: (certificate.certificateUid || certificate.certificate_uid) }"
+                                        class="btn btn-outline-secondary btn-sm">
+                                        <i class="bi bi-shield-check me-1"></i>Verify Certificate
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </ng-container>
+</div>
+
+<ng-template #loadingState>
+    <div class="profile-loading">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading profile data…</p>
+    </div>
+</ng-template>
+
+<ng-template #notLoggedIn>
+    <div class="profile-alert profile-alert--muted text-center">
+        <p>You must be logged in to view your profile.</p>
+        <a routerLink="/login" class="btn btn-success mt-2">Log In</a>
+    </div>
+</ng-template>

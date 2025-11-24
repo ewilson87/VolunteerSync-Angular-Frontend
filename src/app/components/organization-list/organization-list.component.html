@@ -1,0 +1,167 @@
+<div class="organization-page">
+    <section class="organization-hero card shadow-sm">
+        <div class="organization-hero__image">
+            <img src="assets/VS_Logo_Banner.png" alt="VolunteerSync banner">
+        </div>
+        <div class="organization-hero__content">
+            <h1>Partner Organizations</h1>
+            <p>
+                Explore trusted community partners hosting meaningful volunteer opportunities. Filter by mission,
+                contact
+                info, or website to find groups you'd like to support.
+            </p>
+            <div class="organization-hero__stats">
+                <div>
+                    <span class="organization-hero__stats-label">Total Organizations </span>
+                    <span class="organization-hero__stats-value">{{ filteredOrganizations.length }}</span>
+                </div>
+                <div>
+                    <span class="organization-hero__stats-label">Active Filters </span>
+                    <span class="organization-hero__stats-value">{{ (searchTerm ? 1 : 0) + (hasWebsiteOnly ? 1 : 0)
+                        }}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="organization-filters card shadow-sm">
+        <div class="organization-filters__header">
+            <h2>Search &amp; Filter</h2>
+            <p>Use search and filters to find the right organization to partner with.</p>
+        </div>
+        <div class="organization-filters__controls">
+            <div class="field">
+                <label for="searchTerm">Search</label>
+                <input id="searchTerm" type="text" [(ngModel)]="searchTerm" placeholder="Name or mission statement">
+            </div>
+            <div class="field field--checkbox">
+                <label class="form-check">
+                    <input type="checkbox" class="form-check-input" [(ngModel)]="hasWebsiteOnly">
+                    <span class="form-check-label">Show organizations with websites only</span>
+                </label>
+            </div>
+            <div class="field">
+                <label for="approvalStatusFilter">Approval Status</label>
+                <select id="approvalStatusFilter" class="form-select" [(ngModel)]="approvalStatusFilter">
+                    <option value="approved">Approved</option>
+                    <option value="pending">Pending</option>
+                    <option value="rejected">Rejected</option>
+                    <option value="all">All statuses</option>
+                </select>
+            </div>
+            <div class="organization-filters__actions">
+                <button class="btn btn-success" (click)="applyFilters()">
+                    <i class="bi bi-search me-2"></i>Apply
+                </button>
+                <button class="btn btn-outline-secondary" (click)="clearFilters()">Clear</button>
+            </div>
+        </div>
+    </section>
+
+    <section class="organization-content card shadow-sm" *ngIf="!loading && !error">
+        <div class="organization-table-wrapper" *ngIf="filteredOrganizations.length > 0; else emptyState">
+            <div class="organization-table">
+                <div class="organization-table__row organization-table__row--head">
+                    <div>
+                        <button type="button" class="organization-table__sort" (click)="setSort('name')"
+                            aria-label="Sort by organization name">
+                            Organization
+                            <i class="bi ms-1" [ngClass]="getSortIcon('name')"></i>
+                        </button>
+                    </div>
+                    <div>
+                        Contact
+                    </div>
+                    <div>
+                        <button type="button" class="organization-table__sort" (click)="setSort('website')"
+                            aria-label="Sort by website">
+                            Website
+                            <i class="bi ms-1" [ngClass]="getSortIcon('website')"></i>
+                        </button>
+                    </div>
+                    <div class="text-end">Action</div>
+                </div>
+
+                <div class="organization-table__row"
+                    *ngFor="let org of paginatedOrganizations; trackBy: trackByOrganizationId">
+                    <div>
+                        <p class="organization-table__title">{{ org.name }}</p>
+                        <p class="organization-table__description">{{ org.description | slice:0:160 }}{{
+                            org.description.length > 160 ? '…' : '' }}</p>
+                    </div>
+                    <div>
+                        <div class="organization-table__meta"><i class="bi bi-envelope"></i>{{ org.contactEmail }}</div>
+                        <div class="organization-table__meta" *ngIf="org.contactPhone"><i class="bi bi-telephone"></i>{{
+                            org.contactPhone }}</div>
+                    </div>
+                    <div>
+                        <span *ngIf="org.website; else noWebsite">
+                            <a [href]="org.website" target="_blank" rel="noopener" class="organization-table__link">
+                                Visit site
+                            </a>
+                        </span>
+                        <ng-template #noWebsite><span
+                                class="organization-table__meta organization-table__meta--muted">Not
+                                provided</span></ng-template>
+                    </div>
+                    <div class="text-end">
+                        <a [routerLink]="['/events']" [queryParams]="{organizationId: org.organizationId}"
+                            class="btn btn-sm btn-outline-success">View Events</a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="organization-pagination" *ngIf="filteredOrganizations.length > 0">
+                <div class="organization-pagination__page-size">
+                    <label for="orgPageSizeSelect" class="form-label mb-0 me-2">Show</label>
+                    <select id="orgPageSizeSelect" class="form-select form-select-sm" [(ngModel)]="pageSize"
+                        (ngModelChange)="changePageSize($event)">
+                        <option *ngFor="let size of pageSizeOptions" [ngValue]="size">{{ size }}</option>
+                    </select>
+                    <span class="ms-2">per page</span>
+                </div>
+                <div class="organization-pagination__controls" *ngIf="totalPages > 1">
+                    <button class="btn btn-outline-success btn-sm" (click)="previousPage()"
+                        [disabled]="currentPage === 1">
+                        Prev
+                    </button>
+                    <button *ngFor="let page of pageNumbers" class="btn btn-sm organization-pagination__page-button"
+                        [ngClass]="{
+                            'btn-success text-white': page === currentPage,
+                            'btn-outline-success': page !== currentPage
+                        }" (click)="goToPage(page)">
+                        {{ page }}
+                    </button>
+                    <button class="btn btn-outline-success btn-sm" (click)="nextPage()"
+                        [disabled]="currentPage === totalPages">
+                        Next
+                    </button>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <ng-template #emptyState>
+        <div class="organization-empty card shadow-sm">
+            <div class="organization-empty__illustration">
+                <img src="assets/welcome_circle.png" alt="Illustration of volunteers">
+            </div>
+            <div class="organization-empty__content">
+                <h3>No organizations found</h3>
+                <p>Try adjusting your filters or come back later as partners are added to the community.</p>
+                <button class="btn btn-success" (click)="clearFilters()">Reset Filters</button>
+            </div>
+        </div>
+    </ng-template>
+
+    <div class="organization-loading" *ngIf="loading">
+        <div class="spinner-border text-success" role="status">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <p>Loading organizations...</p>
+    </div>
+
+    <div *ngIf="error" class="alert alert-danger">
+        {{ error }}
+    </div>
+</div>

@@ -1,0 +1,134 @@
+<div class="register-page">
+    <section class="register-hero card shadow-sm">
+        <div class="register-hero__content">
+            <h1>Create Your VolunteerSync Account</h1>
+            <p>Select how you'd like to participate, then complete the registration form that best fits your role.</p>
+            <div class="register-role-picker">
+                <h2>How would you like to get started?</h2>
+                <div class="register-role-picker__options">
+                    <button type="button" class="register-role-picker__option"
+                        [class.active]="selectedRole === 'volunteer'" (click)="selectRole('volunteer')">
+                        <i class="bi bi-people"></i>
+                        <span>Volunteer</span>
+                        <p>Browse events, sign up instantly, and track your service history.</p>
+                    </button>
+                    <button type="button" class="register-role-picker__option"
+                        [class.active]="selectedRole === 'organizer'" (click)="selectRole('organizer')">
+                        <i class="bi bi-building"></i>
+                        <span>Organizer</span>
+                        <p>Submit an organization and manage events for your community.</p>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="register-hero__image">
+            <img src="assets/VS_Logo_Square.png" alt="VolunteerSync banner">
+        </div>
+    </section>
+
+    <section class="register-form card shadow-sm" *ngIf="selectedRole">
+        <h2>{{ selectedRole === 'volunteer' ? 'Volunteer Registration' : 'Organizer Registration' }}</h2>
+        <p class="register-form__subtitle">
+            {{ selectedRole === 'volunteer' ? 'Fill in your details to start volunteering right away.' : 'Tell us about
+            yourself and your organization so we can review and approve your events.' }}
+        </p>
+
+        <div *ngIf="successMessage" class="register-alert register-alert--success">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
+        </div>
+        <div *ngIf="errorMessage" class="register-alert register-alert--error">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ errorMessage }}
+        </div>
+
+        <form (ngSubmit)="onRegister()" novalidate>
+            <div class="register-section">
+                <h3>Your Information</h3>
+                <div class="register-grid">
+                    <div class="register-field">
+                        <label for="firstName">First Name *</label>
+                        <input type="text" id="firstName" name="firstName" [(ngModel)]="formData.firstName"
+                            maxlength="50" required>
+                    </div>
+                    <div class="register-field">
+                        <label for="lastName">Last Name *</label>
+                        <input type="text" id="lastName" name="lastName" [(ngModel)]="formData.lastName" maxlength="50"
+                            required>
+                    </div>
+                    <div class="register-field">
+                        <label for="email">Email *</label>
+                        <input type="email" id="email" name="email" [(ngModel)]="formData.email" maxlength="100"
+                            required>
+                    </div>
+                </div>
+
+                <div class="register-password-section">
+                    <div class="register-password-fields">
+                        <div class="register-field">
+                            <label for="password">Password *</label>
+                            <input type="password" id="password" name="password" [(ngModel)]="formData.password"
+                                maxlength="100" minlength="8" required>
+                        </div>
+                        <div class="register-field">
+                            <label for="confirmPassword">Confirm Password *</label>
+                            <input type="password" id="confirmPassword" name="confirmPassword"
+                                [(ngModel)]="formData.confirmPassword" maxlength="100" required>
+                        </div>
+                    </div>
+                    <div class="register-password-requirements">
+                        <strong>Password Requirements:</strong>
+                        <span>• Must be between 8 and 100 characters</span>
+                        <span>• Must contain at least one uppercase letter (A-Z)</span>
+                        <span>• Must contain at least one lowercase letter (a-z)</span>
+                        <span>• Must contain at least one number (0-9)</span>
+                        <span>• Must contain at least one special character (&#64;$!%*?&)</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="register-section" *ngIf="selectedRole === 'organizer'">
+                <h3>Organization Details</h3>
+                <p class="register-section__subtitle">Provide information about the organization you represent so our
+                    team can review your application.</p>
+                <div class="register-grid">
+                    <div class="register-field">
+                        <label for="orgName">Organization Name *</label>
+                        <input type="text" id="orgName" name="orgName" [(ngModel)]="orgData.name" maxlength="100"
+                            required>
+                    </div>
+                    <div class="register-field register-field--full">
+                        <label for="orgDescription">Description *</label>
+                        <textarea id="orgDescription" name="orgDescription" rows="3" [(ngModel)]="orgData.description"
+                            maxlength="65535" required></textarea>
+                    </div>
+                    <div class="register-field">
+                        <label for="orgEmail">Contact Email *</label>
+                        <input type="email" id="orgEmail" name="orgEmail" [(ngModel)]="orgData.contactEmail"
+                            maxlength="100" required>
+                    </div>
+                    <div class="register-field">
+                        <label for="orgPhone">Contact Phone *</label>
+                        <input type="tel" id="orgPhone" name="orgPhone" [(ngModel)]="orgData.contactPhone"
+                            maxlength="20" required>
+                    </div>
+                    <div class="register-field register-field--full">
+                        <label for="orgWebsite">Website</label>
+                        <input type="url" id="orgWebsite" name="orgWebsite" [(ngModel)]="orgData.website"
+                            maxlength="255" placeholder="https://yourorganization.org">
+                        <div class="form-text">Optional. Include the full URL.</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="register-actions">
+                <button type="submit" class="btn btn-success btn-lg" [disabled]="isSubmitting">
+                    {{ isSubmitting ? 'Submitting…' : 'Complete Registration' }}
+                </button>
+            </div>
+        </form>
+
+        <div class="register-footer">
+            <p>Already have an account? <a routerLink="/login" [queryParams]="{returnUrl: returnUrl}">Log in here.</a>
+            </p>
+        </div>
+    </section>
+</div>

@@ -1,0 +1,311 @@
+.organization-page {
+    display: flex;
+    flex-direction: column;
+    gap: 2.5rem;
+    padding-bottom: 3rem;
+}
+
+.organization-page .card {
+    border: none;
+    border-radius: 1.5rem;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+
+.organization-page .card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px rgba(21, 87, 65, 0.12);
+}
+
+.organization-hero {
+    background: linear-gradient(135deg, #2f7d60 0%, #1f8a62 45%, #4dbb8a 100%);
+    color: #ffffff;
+    overflow: hidden;
+    padding: 0;
+}
+
+.organization-hero__image img {
+    width: 100%;
+    display: block;
+}
+
+.organization-hero__content {
+    padding: clamp(2rem, 4vw, 3rem);
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.organization-hero__content h1 {
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    font-weight: 700;
+    margin: 0;
+}
+
+.organization-hero__content p {
+    max-width: 52rem;
+    font-size: 1.05rem;
+    margin: 0;
+    opacity: 0.92;
+}
+
+.organization-hero__stats {
+    display: grid;
+    gap: 1rem 1.5rem;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+}
+
+.organization-hero__stats-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    opacity: 0.7;
+}
+
+.organization-hero__stats-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+}
+
+.organization-filters {
+    padding: clamp(1.75rem, 3vw, 2.5rem);
+    background: linear-gradient(135deg, rgba(244, 251, 246, 0.88) 0%, rgba(255, 255, 255, 0.98) 100%);
+}
+
+.organization-filters__header h2 {
+    font-size: 1.6rem;
+    font-weight: 700;
+    color: #1f7d60;
+}
+
+.organization-filters__header p {
+    color: #4a6659;
+    margin-bottom: 1.5rem;
+}
+
+.organization-filters__controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.2rem 1.5rem;
+    align-items: end;
+}
+
+.field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+}
+
+.field label {
+    font-weight: 600;
+    color: #215f49;
+    font-size: 0.9rem;
+}
+
+.field input[type='text'],
+.field input[type='date'],
+.organization-filters select {
+    border-radius: 0.75rem;
+    border: 1px solid rgba(31, 125, 96, 0.25);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.95rem;
+    background: #ffffff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.field input:focus,
+.organization-filters select:focus {
+    border-color: #1f7d60;
+    outline: none;
+    box-shadow: 0 0 0 0.2rem rgba(31, 125, 96, 0.15);
+}
+
+.field--checkbox {
+    align-items: flex-start;
+}
+
+.organization-filters__actions {
+    display: flex;
+    gap: 0.75rem;
+}
+
+.organization-content {
+    padding: clamp(1.8rem, 3vw, 2.5rem);
+    background: #ffffff;
+}
+
+.organization-table-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.organization-table {
+    border-radius: 1.25rem;
+    background: rgba(249, 253, 251, 0.9);
+    overflow: hidden;
+    border: 1px solid rgba(31, 125, 96, 0.12);
+}
+
+.organization-table__row {
+    display: grid;
+    grid-template-columns: 2fr 1.1fr 1fr auto;
+    gap: 0.75rem;
+    padding: 1.15rem 1.4rem;
+    align-items: center;
+    border-bottom: 1px solid rgba(31, 125, 96, 0.08);
+}
+
+.organization-table__row:last-child {
+    border-bottom: none;
+}
+
+.organization-table__row--head {
+    background: rgba(31, 125, 96, 0.12);
+    font-weight: 600;
+    color: #0f3e2d;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+}
+
+.organization-table__sort {
+    background: transparent;
+    border: none;
+    padding: 0;
+    font: inherit;
+    color: inherit;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.organization-table__sort:focus-visible {
+    outline: 2px solid rgba(31, 125, 96, 0.5);
+    border-radius: 0.4rem;
+    padding: 0 0.25rem;
+    margin: 0 -0.25rem;
+}
+
+.organization-table__title {
+    font-weight: 700;
+    color: #14533f;
+    margin-bottom: 0.35rem;
+    font-size: 1.05rem;
+}
+
+.organization-table__description {
+    color: #405b4d;
+    margin: 0;
+}
+
+.organization-table__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    color: #3f5d50;
+}
+
+.organization-table__meta i {
+    color: #1f7d60;
+}
+
+.organization-table__meta--muted {
+    color: rgba(63, 93, 80, 0.6);
+}
+
+.organization-table__link {
+    color: #1f7d60;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.organization-table__link:hover,
+.organization-table__link:focus {
+    text-decoration: underline;
+}
+
+.organization-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem 1rem;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.organization-pagination__page-size {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.organization-pagination__page-size .form-select {
+    width: auto;
+    min-width: 90px;
+}
+
+.organization-pagination__controls {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.organization-pagination__page-button {
+    min-width: 2.5rem;
+}
+
+.organization-empty {
+    display: grid;
+    gap: 1.5rem;
+    grid-template-columns: minmax(0, 1fr);
+    padding: clamp(1.75rem, 3vw, 2.5rem);
+    background: #ffffff;
+    text-align: center;
+}
+
+.organization-empty__illustration img {
+    max-width: 220px;
+    width: 100%;
+    border-radius: 50%;
+    margin: 0 auto;
+    box-shadow: 0 20px 34px rgba(21, 87, 65, 0.12);
+}
+
+.organization-empty__content h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #14533f;
+}
+
+.organization-empty__content p {
+    color: #4a6659;
+    margin-bottom: 1.25rem;
+}
+
+.organization-loading {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 3rem 0;
+    color: #1f7d60;
+}
+
+@media (max-width: 767.98px) {
+    .organization-table__row {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+        padding: 1rem;
+    }
+
+    .organization-table__row--head {
+        display: none;
+    }
+
+    .organization-page .card:hover {
+        transform: none;
+        box-shadow: none;
+    }
+}

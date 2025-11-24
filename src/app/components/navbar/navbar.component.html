@@ -1,0 +1,87 @@
+<nav class="navbar navbar-expand-lg vs-navbar shadow-sm">
+    <div class="container">
+        <a class="navbar-brand vs-navbar__brand" routerLink="/">
+            <img src="assets/VS_Logo3.png" alt="VolunteerSync Logo" height="44" class="vs-navbar__logo me-2">
+            <span class="vs-navbar__brand-text">
+                <span class="vs-navbar__brand-title">VolunteerSync</span>
+                <span class="vs-navbar__brand-tagline">Connect. Serve. Verify.</span>
+            </span>
+        </a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav"
+            aria-controls="navbarNav" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto align-items-lg-center vs-navbar__links">
+                <li class="nav-item">
+                    <a class="nav-link vs-nav-link" routerLink="/" routerLinkActive="active"
+                        [routerLinkActiveOptions]="{exact: true}">Home</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link vs-nav-link" routerLink="/events" routerLinkActive="active">Events</a>
+                </li>
+                <li class="nav-item" *ngIf="isLoggedIn && (isOrganizer() || isAdmin())">
+                    <a class="nav-link vs-nav-link" routerLink="/create-event" routerLinkActive="active">Create Event</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link vs-nav-link" routerLink="/organizations" routerLinkActive="active">Organizations</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link vs-nav-link" routerLink="/verify" routerLinkActive="active">
+                        <i class="bi bi-shield-check me-1"></i>Verify Certificate
+                    </a>
+                </li>
+                <!-- Organizer Dashboard Link -->
+                <li class="nav-item" *ngIf="isLoggedIn && (isOrganizer() || isAdmin())">
+                    <a class="nav-link vs-nav-link" routerLink="/organizer" routerLinkActive="active">
+                        <i class="bi bi-speedometer2 me-1"></i>Organizer Dashboard
+                    </a>
+                </li>
+                <!-- Admin Dashboard Link -->
+                <li class="nav-item" *ngIf="isLoggedIn && isAdmin()">
+                    <a class="nav-link vs-nav-link" routerLink="/admin" routerLinkActive="active">
+                        <i class="bi bi-shield-lock me-1"></i>Admin Dashboard
+                    </a>
+                </li>
+            </ul>
+            <ul class="navbar-nav align-items-lg-center vs-navbar__actions">
+                <ng-container *ngIf="!isLoggedIn">
+                    <li class="nav-item">
+                        <a class="nav-link vs-nav-link" routerLink="/login" routerLinkActive="active">Login</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="btn btn-success vs-navbar__cta" routerLink="/register">Join Now</a>
+                    </li>
+                </ng-container>
+
+                <ng-container *ngIf="isLoggedIn && currentUser">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle vs-nav-link vs-nav-link--dropdown" href="#"
+                            id="userDropdown" role="button"
+                            data-bs-toggle="dropdown" aria-expanded="false">
+                            Welcome, {{ currentUser.firstName }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end vs-navbar__dropdown" aria-labelledby="userDropdown">
+                            <li><a class="dropdown-item" routerLink="/profile">
+                                    <i class="bi bi-person me-2"></i>My Profile
+                                </a></li>
+                            <li *ngIf="isOrganizer() || isAdmin()"><a class="dropdown-item" routerLink="/organizer">
+                                    <i class="bi bi-speedometer2 me-2"></i>Organizer Dashboard
+                                </a></li>
+                            <li *ngIf="isAdmin()"><a class="dropdown-item" routerLink="/admin">
+                                    <i class="bi bi-shield-lock me-2"></i>Admin Dashboard
+                                </a></li>
+                            <li>
+                                <hr class="dropdown-divider">
+                            </li>
+                            <li><a class="dropdown-item" href="javascript:void(0)" (click)="logout()">
+                                    <i class="bi bi-box-arrow-right me-2"></i>Logout
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ng-container>
+            </ul>
+        </div>
+    </div>
+</nav>
