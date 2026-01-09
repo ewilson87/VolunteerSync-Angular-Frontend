@@ -23,6 +23,12 @@
         <h2>Event Details</h2>
         <p class="create-event-form__subtitle">Fill out the information below. Fields marked with * are required.</p>
 
+        <div *ngIf="isDuplicatingEvent" class="create-event-alert create-event-alert--info mb-3">
+            <i class="bi bi-info-circle-fill me-2"></i>
+            <strong>Duplicating event:</strong> {{ sourceEventTitle }}
+            <span class="text-muted ms-2">Review and update the details below, then submit to create a new event.</span>
+        </div>
+
         <div *ngIf="successMessage" class="create-event-alert create-event-alert--success">
             <i class="bi bi-check-circle-fill me-2"></i>{{ successMessage }}
         </div>

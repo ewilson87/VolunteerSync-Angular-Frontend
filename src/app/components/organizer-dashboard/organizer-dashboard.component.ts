@@ -998,6 +998,63 @@ export class OrganizerDashboardComponent implements OnInit {
     }
   }
 
+  /**
+   * Duplicates an event and navigates to create-event page with pre-filled data.
+   * 
+   * @param event - The event to duplicate
+   */
+  duplicateEvent(event: EventWithRegistrations): void {
+    // Prepare clean duplicate data
+    const duplicateData = this.prepareEventDuplicate(event);
+    
+    // Navigate to create-event page with router state
+    this.router.navigate(['/create-event'], {
+      state: {
+        duplicateEvent: duplicateData,
+        sourceEventTitle: event.title
+      }
+    });
+  }
+
+  /**
+   * Prepares a clean event object for duplication by stripping out fields that shouldn't be copied.
+   * 
+   * @param event - The source event to duplicate
+   * @returns Clean event object ready for creating a new event
+   */
+  private prepareEventDuplicate(event: EventWithRegistrations): any {
+    // Create a clean copy of the event, removing fields that shouldn't be duplicated
+    const duplicate: any = {
+      title: event.title || '',
+      description: event.description || '',
+      eventDate: '', // Reset date - user should set new date
+      eventTime: event.eventTime || '', // Keep time, but user can change
+      eventLengthHours: event.eventLengthHours || 1, // Keep duration, but validate
+      locationName: event.locationName || '',
+      address: event.address || '',
+      city: event.city || '',
+      state: event.state || '',
+      numNeeded: event.numNeeded || 1, // Keep capacity, but user can change
+      organizationId: event.organizationId || 0, // Keep organization
+      // Tags will be handled separately - store tag IDs
+      tagIds: event.tags && event.tags.length > 0 
+        ? event.tags.map(tag => tag.tagId) 
+        : []
+    };
+
+    // Strip out fields that should NOT be copied:
+    // - eventId (will be assigned by backend)
+    // - numSignedUp (new event starts at 0)
+    // - createdBy (will be set from current user)
+    // - organizationName (derived field)
+    // - registrations (new event has none)
+    // - userDetails (new event has none)
+    // - showRegistrations (UI state)
+    // - Any timestamps or audit fields
+
+    return duplicate;
+  }
+
   // Edit event functionality
   editEvent(event: EventWithRegistrations): void {
     // Create a deep copy of the event

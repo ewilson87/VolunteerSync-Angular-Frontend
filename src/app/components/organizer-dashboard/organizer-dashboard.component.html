@@ -275,6 +275,8 @@
                                 <div class="organizer-event__actions">
                                     <button class="btn btn-outline-primary btn-sm" *ngIf="!isEventInPast(event)"
                                         (click)="editEvent(event)"><i class="bi bi-pencil me-1"></i>Edit</button>
+                                    <button class="btn btn-outline-success btn-sm" (click)="duplicateEvent(event)"><i
+                                            class="bi bi-files me-1"></i>Duplicate</button>
                                     <button class="btn btn-outline-danger btn-sm" (click)="confirmDeleteEvent(event)"><i
                                             class="bi bi-trash me-1"></i>Delete</button>
                                 </div>

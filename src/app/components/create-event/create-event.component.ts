@@ -1,6 +1,6 @@
 import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { VolunteerService } from '../../services/volunteer-service.service';
 import { Event } from '../../models/event.model';
@@ -44,6 +44,11 @@ export class CreateEventComponent implements OnInit {
     isAdmin: boolean = false;
     userOrgId: number | null = null;
     today: string = '';
+    
+    // Duplicate event state
+    isDuplicatingEvent: boolean = false;
+    sourceEventTitle: string = '';
+    duplicateTagIds: number[] = []; // Store tag IDs from duplicate until tags are loaded
 
     // Tags
     availableTags: Tag[] = [];
@@ -196,14 +201,33 @@ export class CreateEventComponent implements OnInit {
         private volunteerService: VolunteerService,
         private router: Router,
         private authService: AuthService,
-        private inputValidation: InputValidationService
+        private inputValidation: InputValidationService,
+        private route: ActivatedRoute
     ) { }
 
     /**
      * Initializes the component, validates user authorization, and loads organizations.
+     * Also checks for duplicate event data from router state.
      */
     ngOnInit(): void {
         this.today = new Date().toISOString().split('T')[0];
+        
+        // Check for duplicate event data in router state
+        // Try getCurrentNavigation first (works during navigation), then fall back to history state
+        const navigation = this.router.getCurrentNavigation();
+        let state: any = navigation?.extras?.state;
+        
+        // If navigation state is not available, try browser history state
+        if (!state && typeof window !== 'undefined' && window.history.state) {
+            state = window.history.state;
+        }
+        
+        if (state && state['duplicateEvent']) {
+            this.isDuplicatingEvent = true;
+            this.sourceEventTitle = state['sourceEventTitle'] || '';
+            this.prefillEventFromDuplicate(state['duplicateEvent']);
+        }
+        
         // Initialize time picker
         if (this.event.eventTime) {
             this.parseEventTime();
@@ -248,6 +272,36 @@ export class CreateEventComponent implements OnInit {
 
         this.loadOrganizations();
         this.loadTags();
+    }
+
+    /**
+     * Pre-fills the event form with data from a duplicate event.
+     * 
+     * @param duplicateData - The duplicate event data from router state
+     */
+    private prefillEventFromDuplicate(duplicateData: any): void {
+        // Pre-fill all event fields
+        this.event.title = duplicateData.title || '';
+        this.event.description = duplicateData.description || '';
+        this.event.eventDate = duplicateData.eventDate || ''; // Will be empty - user should set new date
+        this.event.eventTime = duplicateData.eventTime || '';
+        this.event.eventLengthHours = duplicateData.eventLengthHours || 1;
+        this.event.locationName = duplicateData.locationName || '';
+        this.event.address = duplicateData.address || '';
+        this.event.city = duplicateData.city || '';
+        this.event.state = duplicateData.state || '';
+        this.event.numNeeded = duplicateData.numNeeded || 1;
+        this.event.organizationId = duplicateData.organizationId || 0;
+        
+        // Parse time for the time picker
+        if (this.event.eventTime) {
+            this.parseEventTime();
+        }
+        
+        // Store tag IDs for later - will be applied after tags are loaded
+        if (duplicateData.tagIds && duplicateData.tagIds.length > 0) {
+            this.duplicateTagIds = [...duplicateData.tagIds];
+        }
     }
 
     /**
@@ -340,6 +394,14 @@ export class CreateEventComponent implements OnInit {
             next: (tags) => {
                 this.availableTags = tags || [];
                 this.tagsLoading = false;
+                
+                // If duplicating an event, apply the duplicate tag IDs after tags are loaded
+                if (this.isDuplicatingEvent && this.duplicateTagIds.length > 0) {
+                    // Only select tags that actually exist in availableTags
+                    this.selectedTagIds = this.duplicateTagIds.filter(tagId => 
+                        this.availableTags.some(tag => tag.tagId === tagId)
+                    );
+                }
             },
             error: (error) => {
                 console.error('Error loading tags', error);
