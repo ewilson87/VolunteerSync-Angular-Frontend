@@ -6,6 +6,9 @@ import { Event } from '../../models/event.model';
 import { Signup } from '../../models/signup.model';
 import { Organization } from '../../models/organization.model';
 import { AuthService } from '../../services/auth.service';
+import { Tag, EventTagWithDetails } from '../../models/tag.model';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
 
 @Component({
     selector: 'app-event-detail',
@@ -32,6 +35,14 @@ export class EventDetailComponent implements OnInit {
     // Registration status
     isRegistered: boolean = false;
     userSignup: Signup | null = null;
+
+    // Tags
+    eventTags: Tag[] = [];
+
+    // Follow status
+    isFollowingOrganization: boolean = false;
+    isCheckingFollow: boolean = false;
+    isTogglingFollow: boolean = false;
 
     constructor(
         private route: ActivatedRoute,
@@ -87,10 +98,18 @@ export class EventDetailComponent implements OnInit {
 
                 if (this.event) {
                     this.isPastEvent = this.isEventInPast(this.event);
+                    // Load tags for this event
+                    if (this.event.eventId) {
+                        this.loadEventTags(this.event.eventId);
+                    }
                 }
 
                 if (this.event && this.event.organizationId) {
                     this.loadOrganizationDetails(this.event.organizationId);
+                    // Check if user follows this organization
+                    if (this.isLoggedIn && this.currentUserId) {
+                        this.checkFollowStatus(this.event.organizationId);
+                    }
                 } else {
                     this.loading = false;
                 }
@@ -102,6 +121,33 @@ export class EventDetailComponent implements OnInit {
             error: (error) => {
                 this.error = 'Failed to load event details. Please try again later.';
                 this.loading = false;
+            }
+        });
+    }
+
+    /**
+     * Loads tags for the event.
+     * 
+     * @param eventId - The ID of the event to load tags for
+     */
+    loadEventTags(eventId: number): void {
+        console.log('Loading tags for event:', eventId);
+        this.volunteerService.getTagsForEvent(eventId).subscribe({
+            next: (eventTags: EventTagWithDetails[]) => {
+                console.log('Tags loaded for event', eventId, ':', eventTags);
+                this.eventTags = eventTags.map(et => ({
+                    tagId: et.tagId,
+                    name: et.tagName || 'Unknown Tag'
+                } as Tag));
+                console.log('Mapped tags:', this.eventTags);
+            },
+            error: (error) => {
+                console.error('Failed to load event tags for event', eventId, error);
+                // If it's a 500 error, it's likely a backend SQL issue
+                if (error.status === 500) {
+                    console.warn('Backend error loading tags - this may be a backend SQL issue. Check backend logs.');
+                }
+                this.eventTags = [];
             }
         });
     }
@@ -125,6 +171,80 @@ export class EventDetailComponent implements OnInit {
                 this.loading = false;
             }
         });
+    }
+
+    /**
+     * Checks if the current user follows the organization.
+     * 
+     * @param organizationId - The ID of the organization
+     */
+    checkFollowStatus(organizationId: number): void {
+        if (!this.isLoggedIn || !this.currentUserId) {
+            return;
+        }
+        this.isCheckingFollow = true;
+        this.volunteerService.checkUserFollowsOrganization(this.currentUserId, organizationId).subscribe({
+            next: (status) => {
+                this.isFollowingOrganization = status.isFollowing;
+                this.isCheckingFollow = false;
+            },
+            error: (error) => {
+                // Silently handle 404 errors (endpoint may not be implemented yet)
+                if (error.status !== 404) {
+                    console.error('Error checking follow status', error);
+                }
+                this.isFollowingOrganization = false;
+                this.isCheckingFollow = false;
+            }
+        });
+    }
+
+    /**
+     * Toggles follow status for the organization.
+     */
+    toggleFollowOrganization(): void {
+        if (!this.isLoggedIn || !this.currentUserId || !this.organization?.organizationId || this.isTogglingFollow) {
+            return;
+        }
+
+        this.isTogglingFollow = true;
+        const organizationId = this.organization.organizationId;
+
+        if (this.isFollowingOrganization) {
+            // Unfollow
+            this.volunteerService.unfollowOrganization(this.currentUserId, organizationId).subscribe({
+                next: () => {
+                    this.isFollowingOrganization = false;
+                    this.isTogglingFollow = false;
+                },
+                error: (error) => {
+                    // Only log non-404 errors (404 means endpoint not implemented)
+                    if (error.status !== 404) {
+                        console.error('Error unfollowing organization', error);
+                    } else {
+                        console.warn('Follow organization endpoint not available (404). Backend may need to implement this feature.');
+                    }
+                    this.isTogglingFollow = false;
+                }
+            });
+        } else {
+            // Follow
+            this.volunteerService.followOrganization(this.currentUserId, organizationId).subscribe({
+                next: () => {
+                    this.isFollowingOrganization = true;
+                    this.isTogglingFollow = false;
+                },
+                error: (error) => {
+                    // Only log non-404 errors (404 means endpoint not implemented)
+                    if (error.status !== 404) {
+                        console.error('Error following organization', error);
+                    } else {
+                        console.warn('Follow organization endpoint not available (404). Backend may need to implement this feature.');
+                    }
+                    this.isTogglingFollow = false;
+                }
+            });
+        }
     }
 
     /**
@@ -244,5 +364,42 @@ export class EventDetailComponent implements OnInit {
         const eventDate = new Date(year, month - 1, day); // Month is 0-indexed in JS Date
 
         return eventDate < today;
+    }
+
+    /**
+     * Converts 24-hour time format (HH:MM or HH:MM:SS) to 12-hour AM/PM format
+     * @param time24 - Time in 24-hour format (e.g., "14:30" or "14:30:00")
+     * @returns Time in 12-hour format with AM/PM (e.g., "2:30 PM")
+     */
+    formatTime12Hour(time24: string | null | undefined): string {
+        if (!time24) {
+            return '';
+        }
+
+        // Handle both HH:MM and HH:MM:SS formats
+        const timeParts = time24.trim().split(':');
+        if (timeParts.length < 2) {
+            return time24; // Return original if format is unexpected
+        }
+
+        const hour24 = parseInt(timeParts[0], 10);
+        const minute = parseInt(timeParts[1], 10);
+
+        if (isNaN(hour24) || isNaN(minute)) {
+            return time24; // Return original if parsing fails
+        }
+
+        let hour12 = hour24;
+        const amPm = hour24 >= 12 ? 'PM' : 'AM';
+
+        if (hour24 === 0) {
+            hour12 = 12; // Midnight
+        } else if (hour24 === 12) {
+            hour12 = 12; // Noon
+        } else if (hour24 > 12) {
+            hour12 = hour24 - 12;
+        }
+
+        return `${hour12}:${minute.toString().padStart(2, '0')} ${amPm}`;
     }
 } 

@@ -1,17 +1,25 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ViewChild, ElementRef, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { RouterModule, Router } from '@angular/router';
+import { RouterModule, Router, ActivatedRoute } from '@angular/router';
 import { User } from '../../models/user.model';
 import { Organization } from '../../models/organization.model';
 import { AuthService } from '../../services/auth.service';
 import { VolunteerService } from '../../services/volunteer-service.service';
 import { Signup } from '../../models/signup.model';
 import { Event } from '../../models/event.model';
+import { VolunteerMetrics } from '../../models/metrics.model';
 import { InputValidationService } from '../../services/input-validation.service';
 import { forkJoin, of } from 'rxjs';
 import { map, catchError } from 'rxjs/operators';
 import jsPDF from 'jspdf';
+import * as XLSX from 'xlsx';
+import { ChartConfiguration, ChartData, ChartType } from 'chart.js';
+import { BaseChartDirective } from 'ng2-charts';
+import { Chart, registerables } from 'chart.js';
+
+// Register Chart.js components
+Chart.register(...registerables);
 
 interface EventWithDetails extends Event {
   signupId?: number;
@@ -23,7 +31,7 @@ interface EventWithDetails extends Event {
 @Component({
   selector: 'app-user-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterModule],
+  imports: [CommonModule, FormsModule, RouterModule, BaseChartDirective],
   templateUrl: './user-profile.component.html',
   styleUrl: './user-profile.component.css'
 })
@@ -47,24 +55,99 @@ export class UserProfileComponent implements OnInit {
   newPassword = '';
   confirmPassword = '';
   passwordError = '';
+  
+  // Password validation feedback
+  passwordRequirements = {
+    length: false,
+    uppercase: false,
+    lowercase: false,
+    number: false,
+    special: false
+  };
+  passwordsMatch = false;
 
   // Event signups properties
   userSignups: Signup[] = [];
   userEvents: EventWithDetails[] = [];
   upcomingEvents: EventWithDetails[] = [];
   pastEvents: EventWithDetails[] = [];
+  paginatedUpcomingEvents: EventWithDetails[] = [];
+  paginatedPastEvents: EventWithDetails[] = [];
   loadingEvents = false;
   eventsError = '';
   activeEventTab: 'upcoming' | 'past' = 'upcoming';
+  eventsPageSizeOptions: number[] = [5, 10, 25, 50];
+  eventsPageSize = 5;
+  eventsCurrentPage = 1;
   
   // Certificates properties
   userCertificates: any[] = [];
+  paginatedCertificates: any[] = [];
   loadingCertificates = false;
   certificatesError = '';
+  certificatesPageSizeOptions: number[] = [5, 10, 25, 50];
+  certificatesPageSize = 5;
+  certificatesCurrentPage = 1;
+  
+  // Support Messages properties
+  userSupportMessages: any[] = [];
+  paginatedSupportMessages: any[] = [];
+  loadingSupportMessages = false;
+  supportMessagesError = '';
+  supportMessagesPageSizeOptions: number[] = [5, 10, 25, 50];
+  supportMessagesPageSize = 5;
+  supportMessagesCurrentPage = 1;
+  showSupportMessageModal = false;
+  selectedSupportMessageForReply: any | null = null;
+  followUpForm = {
+    subject: '',
+    message: ''
+  };
+  isSubmittingFollowUp = false;
+  expandedMessages: Set<number> = new Set();
+  shouldScrollToSupport = false;
+  
+  // Collapsible sections
+  eventsSectionExpanded = false;
+  certificatesSectionExpanded = false;
+  metricsSectionExpanded = false;
+  supportMessagesSectionExpanded = false;
+  followedOrganizationsSectionExpanded = false;
+  followedTagsSectionExpanded = false;
+  
+  // Followed Organizations properties
+  followedOrganizations: any[] = [];
+  loadingFollowedOrganizations = false;
+  followedOrganizationsError = '';
+  
+  // Followed Tags properties
+  followedTags: any[] = [];
+  availableTagsForFollowing: any[] = [];
+  loadingFollowedTags = false;
+  loadingAvailableTags = false;
+  followedTagsError = '';
+  tagsDropdownOpen = false;
+  tagSearchQuery = '';
+
+  @HostListener('document:click', ['$event'])
+  onDocumentClick(event: MouseEvent): void {
+    const target = event.target as HTMLElement;
+    if (!target.closest('.profile-tags-dropdown-wrapper')) {
+      this.tagsDropdownOpen = false;
+      this.tagSearchQuery = '';
+    }
+  }
   
   // Properties for admin viewing other users' profiles
   viewingUserId: number | null = null;
   isViewingOtherUser = false;
+  
+  // Metrics properties
+  volunteerMetrics: VolunteerMetrics | null = null;
+  loadingMetrics = false;
+  metricsError = '';
+  selectedChartType: 'pie' | 'bar' | 'line' = 'bar';
+  selectedMetricChart: 'events' | 'hours' = 'events';
   
   // Computed property to determine if user can edit profile
   get canEditProfile(): boolean {
@@ -80,17 +163,44 @@ export class UserProfileComponent implements OnInit {
     private authService: AuthService,
     private volunteerService: VolunteerService,
     private router: Router,
+    private route: ActivatedRoute,
     private inputValidation: InputValidationService
   ) { }
 
   /**
    * Initializes the component and loads user data after a brief delay
    * to ensure the authentication service is fully initialized.
+   * Also checks for query parameters to auto-scroll to specific sections.
    */
   ngOnInit(): void {
+    // Check for query parameters to scroll to support messages section
+    this.route.queryParams.subscribe(params => {
+      if (params['section'] === 'support') {
+        this.shouldScrollToSupport = true;
+      }
+    });
+    
     setTimeout(() => {
       this.loadUserData();
     }, 500);
+  }
+
+  /**
+   * Scrolls to the support messages section and expands the first message if available.
+   */
+  scrollToSupportMessages(): void {
+    const supportSection = document.querySelector('#support-messages');
+    if (supportSection) {
+      supportSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      
+      // Expand the first message if there are any
+      if (this.userSupportMessages.length > 0) {
+        const firstMessageId = this.getMessageId(this.userSupportMessages[0]);
+        if (!this.isMessageExpanded(firstMessageId)) {
+          this.toggleMessageExpanded(firstMessageId);
+        }
+      }
+    }
   }
 
   /**
@@ -180,11 +290,17 @@ export class UserProfileComponent implements OnInit {
         this.checkAndLoadOrganization();
         this.loadUserSignups();
         this.loadUserCertificates();
+        this.loadUserSupportMessages();
+        this.loadVolunteerMetrics();
+        this.loadFollowedOrganizations();
+        this.loadFollowedTags();
       },
       error: (err) => {
         this.checkAndLoadOrganization();
         this.loadUserSignups();
         this.loadUserCertificates();
+        this.loadUserSupportMessages();
+        this.loadVolunteerMetrics();
       }
     });
   }
@@ -615,6 +731,61 @@ export class UserProfileComponent implements OnInit {
     this.newPassword = '';
     this.confirmPassword = '';
     this.passwordError = '';
+    this.resetPasswordValidation();
+  }
+
+  /**
+   * Resets password validation feedback to initial state.
+   */
+  resetPasswordValidation(): void {
+    this.passwordRequirements = {
+      length: false,
+      uppercase: false,
+      lowercase: false,
+      number: false,
+      special: false
+    };
+    this.passwordsMatch = false;
+  }
+
+  /**
+   * Validates password in real-time and updates requirement feedback.
+   * Called on input change for the new password field.
+   */
+  validatePasswordRequirements(): void {
+    const password = this.newPassword || '';
+    
+    this.passwordRequirements = {
+      length: password.length >= 8 && password.length <= 100,
+      uppercase: /[A-Z]/.test(password),
+      lowercase: /[a-z]/.test(password),
+      number: /[0-9]/.test(password),
+      special: /[@$!%*?&]/.test(password)
+    };
+    
+    // Also check password match when password changes
+    this.checkPasswordsMatch();
+  }
+
+  /**
+   * Checks if the new password and confirm password match.
+   * Called on input change for either password field.
+   */
+  checkPasswordsMatch(): void {
+    if (this.confirmPassword && this.newPassword) {
+      this.passwordsMatch = this.newPassword === this.confirmPassword;
+    } else {
+      this.passwordsMatch = false;
+    }
+  }
+
+  /**
+   * Checks if all password requirements are met.
+   * 
+   * @returns True if all requirements are satisfied
+   */
+  get allPasswordRequirementsMet(): boolean {
+    return Object.values(this.passwordRequirements).every(req => req === true);
   }
 
   // Cancel password change
@@ -830,7 +1001,11 @@ export class UserProfileComponent implements OnInit {
               new Date(a.eventDate + 'T' + a.eventTime).getTime()
             );
 
+            // Update pagination after sorting
+            this.updateEventsPagination();
+
             this.loadingEvents = false;
+            this.updateEventsPagination();
           }
         };
       },
@@ -963,6 +1138,7 @@ export class UserProfileComponent implements OnInit {
             this.userCertificates = fullCertificates;
             console.log('Full certificates with details:', this.userCertificates);
             this.loadingCertificates = false;
+            this.updateCertificatesPagination();
           },
           error: (err) => {
             console.error('Error fetching certificate details:', err);
@@ -1159,5 +1335,1064 @@ export class UserProfileComponent implements OnInit {
     }
     
     return formatted;
+  }
+
+  /**
+   * Loads support messages for the current user.
+   * Filters all support messages to show only those belonging to the current user.
+   */
+  loadUserSupportMessages(): void {
+    if (!this.user || !this.user.userId) {
+      return;
+    }
+
+    this.loadingSupportMessages = true;
+    this.supportMessagesError = '';
+
+    this.volunteerService.getSupportMessages().subscribe({
+      next: (allMessages) => {
+        // Filter messages to only show those from the current user
+        this.userSupportMessages = allMessages.filter(
+          (message: any) => message.userId === this.user!.userId || message.user_id === this.user!.userId
+        );
+        
+        // Sort by date (most recent first)
+        this.userSupportMessages.sort((a, b) => {
+          const dateA = new Date(a.createdAt || a.submittedAt || a.created_at || a.submitted_at || 0).getTime();
+          const dateB = new Date(b.createdAt || b.submittedAt || b.created_at || b.submitted_at || 0).getTime();
+          return dateB - dateA;
+        });
+        
+        this.loadingSupportMessages = false;
+        this.updateSupportMessagesPagination();
+        
+        // Scroll to support messages if requested via query parameter
+        if (this.shouldScrollToSupport) {
+          setTimeout(() => {
+            this.scrollToSupportMessages();
+            this.shouldScrollToSupport = false; // Reset flag
+          }, 300);
+        }
+      },
+      error: (err) => {
+        this.supportMessagesError = 'Failed to load support messages.';
+        this.loadingSupportMessages = false;
+      }
+    });
+  }
+
+  /**
+   * Formats a date string for display in support messages.
+   * 
+   * @param dateString - The date string to format
+   * @returns Formatted date string
+   */
+  formatSupportMessageDate(dateString: string | undefined): string {
+    if (!dateString) return 'N/A';
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString('en-US', {
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch {
+      return dateString;
+    }
+  }
+
+  /**
+   * Checks if a support message has been resolved (has an admin response).
+   * 
+   * @param message - The support message to check
+   * @returns True if the message has been resolved
+   */
+  isSupportMessageResolved(message: any): boolean {
+    return message.isResolved === 1 || message.isResolved === true || !!message.responseMessage || !!message.response_message;
+  }
+
+  /**
+   * Toggles the expanded state of a support message.
+   * 
+   * @param messageId - The ID of the message to toggle
+   */
+  toggleMessageExpanded(messageId: number): void {
+    if (this.expandedMessages.has(messageId)) {
+      this.expandedMessages.delete(messageId);
+    } else {
+      this.expandedMessages.add(messageId);
+    }
+  }
+
+  /**
+   * Checks if a support message is expanded.
+   * 
+   * @param messageId - The ID of the message to check
+   * @returns True if the message is expanded
+   */
+  isMessageExpanded(messageId: number): boolean {
+    return this.expandedMessages.has(messageId);
+  }
+
+  /**
+   * Gets the message ID from a support message object.
+   * 
+   * @param message - The support message object
+   * @returns The message ID
+   */
+  getMessageId(message: any): number {
+    return message.messageId || message.message_id || 0;
+  }
+
+  /**
+   * Opens the follow-up message modal for a support message.
+   * 
+   * @param message - The support message to reply to
+   */
+  openFollowUpModal(message: any): void {
+    this.selectedSupportMessageForReply = message;
+    const originalSubject = message.subject || '';
+    this.followUpForm.subject = originalSubject.startsWith('Re: ') ? originalSubject : `Re: ${originalSubject}`;
+    this.followUpForm.message = '';
+    this.showSupportMessageModal = true;
+  }
+
+  /**
+   * Closes the follow-up message modal.
+   */
+  closeFollowUpModal(): void {
+    this.selectedSupportMessageForReply = null;
+    this.followUpForm.subject = '';
+    this.followUpForm.message = '';
+    this.showSupportMessageModal = false;
+  }
+
+  /**
+   * Submits a follow-up support message.
+   * Creates a new support message that references the original message.
+   */
+  submitFollowUpMessage(): void {
+    if (!this.user || !this.selectedSupportMessageForReply) {
+      return;
+    }
+
+    this.isSubmittingFollowUp = true;
+    this.supportMessagesError = '';
+
+    // Validate subject
+    const subjectValidation = this.inputValidation.validateTextField(
+      this.followUpForm.subject,
+      this.inputValidation.MAX_LENGTHS.subject,
+      'Subject'
+    );
+    if (!subjectValidation.isValid) {
+      this.supportMessagesError = subjectValidation.error || 'Invalid subject';
+      this.isSubmittingFollowUp = false;
+      return;
+    }
+
+    // Validate message
+    const messageValidation = this.inputValidation.validateTextField(
+      this.followUpForm.message,
+      this.inputValidation.MAX_LENGTHS.message,
+      'Message'
+    );
+    if (!messageValidation.isValid) {
+      this.supportMessagesError = messageValidation.error || 'Invalid message';
+      this.isSubmittingFollowUp = false;
+      return;
+    }
+
+    const sanitizedSubject = subjectValidation.sanitized;
+    const sanitizedMessage = messageValidation.sanitized;
+
+    // Include context about the original message in the follow-up
+    const originalMessageId = this.selectedSupportMessageForReply.messageId || this.selectedSupportMessageForReply.message_id;
+    const followUpMessageText = `[Follow-up to message #${originalMessageId}]\n\n${sanitizedMessage}`;
+
+    const supportMessage = {
+      userId: this.user.userId,
+      name: `${this.user.firstName} ${this.user.lastName}`,
+      email: this.user.email,
+      subject: sanitizedSubject,
+      message: followUpMessageText,
+      isResolved: 0,
+      respondedBy: null,
+      responseMessage: null,
+      respondedAt: null
+    };
+
+    this.volunteerService.createSupportMessage(supportMessage).subscribe({
+      next: (response) => {
+        this.success = 'Your follow-up message has been sent successfully.';
+        this.closeFollowUpModal();
+        this.loadUserSupportMessages();
+        this.isSubmittingFollowUp = false;
+      },
+      error: (error) => {
+        this.supportMessagesError = 'Failed to send follow-up message. Please try again.';
+        this.isSubmittingFollowUp = false;
+      }
+    });
+  }
+
+  /**
+   * Loads volunteer metrics from the API.
+   * Only loads if the user is a volunteer (not organizer or admin).
+   */
+  loadVolunteerMetrics(): void {
+    if (!this.user || this.user.role !== 'volunteer') {
+      return;
+    }
+
+    this.loadingMetrics = true;
+    this.metricsError = '';
+
+    this.volunteerService.getVolunteerMetrics().subscribe({
+      next: (metrics) => {
+        // Map API property names to frontend expected names
+        // API returns: yearMonth, but frontend expects: month
+        if (metrics && metrics.historyByMonth) {
+          metrics.historyByMonth = metrics.historyByMonth.map((m: any) => ({
+            month: m.month || m.yearMonth,
+            yearMonth: m.yearMonth || m.month,
+            eventsAttended: m.eventsAttended ?? m.events_attended ?? 0,
+            hoursAttended: m.hoursAttended ?? m.hours_attended ?? 0
+          }));
+        }
+        
+        this.volunteerMetrics = metrics;
+        this.loadingMetrics = false;
+      },
+      error: (error) => {
+        this.metricsError = 'Failed to load metrics. Please try again later.';
+        this.loadingMetrics = false;
+      }
+    });
+  }
+
+  /**
+   * Loads organizations followed by the user.
+   */
+  loadFollowedOrganizations(): void {
+    if (!this.user || !this.user.userId) {
+      return;
+    }
+
+    this.loadingFollowedOrganizations = true;
+    this.followedOrganizationsError = '';
+
+    this.volunteerService.getOrganizationsFollowedByUser(this.user.userId).subscribe({
+      next: (organizations) => {
+        this.followedOrganizations = organizations || [];
+        this.loadingFollowedOrganizations = false;
+      },
+      error: (error) => {
+        // Handle 404 gracefully (endpoint may not be implemented yet)
+        if (error.status === 404) {
+          this.followedOrganizations = [];
+          this.followedOrganizationsError = 'Follow organizations feature is not yet available.';
+        } else {
+          console.error('Error loading followed organizations', error);
+          this.followedOrganizationsError = 'Failed to load followed organizations.';
+        }
+        this.loadingFollowedOrganizations = false;
+      }
+    });
+  }
+
+
+  /**
+   * Unfollows an organization.
+   * 
+   * @param organizationId - The ID of the organization to unfollow
+   */
+  unfollowOrganization(organizationId: number): void {
+    if (!this.user || !this.user.userId) {
+      return;
+    }
+
+    this.volunteerService.unfollowOrganization(this.user.userId, organizationId).subscribe({
+      next: () => {
+        // Remove from list
+        this.followedOrganizations = this.followedOrganizations.filter(org => org.organizationId !== organizationId);
+      },
+      error: (error) => {
+        console.error('Error unfollowing organization', error);
+        this.followedOrganizationsError = 'Failed to unfollow organization.';
+      }
+    });
+  }
+
+  /**
+   * Loads tags followed by the user and available tags for following.
+   */
+  loadFollowedTags(): void {
+    if (!this.user || !this.user.userId) {
+      return;
+    }
+
+    this.loadingFollowedTags = true;
+    this.followedTagsError = '';
+
+    // Load both followed tags and available tags in parallel
+    forkJoin({
+      followed: this.volunteerService.getTagsFollowedByUser(this.user.userId).pipe(
+        catchError(() => of([]))
+      ),
+      available: this.volunteerService.getAllTags().pipe(
+        catchError(() => of([]))
+      )
+    }).subscribe({
+      next: ({ followed, available }) => {
+        this.followedTags = followed || [];
+        this.availableTagsForFollowing = available || [];
+        this.loadingFollowedTags = false;
+      },
+        error: (error) => {
+          // Handle 404 gracefully (endpoint may not be implemented yet)
+          if (error.status === 404) {
+            this.followedTags = [];
+            this.followedTagsError = 'Follow tags feature is not yet available.';
+          } else {
+            console.error('Error loading followed tags', error);
+            this.followedTagsError = 'Failed to load tags.';
+          }
+          this.loadingFollowedTags = false;
+        }
+    });
+  }
+
+  /**
+   * Toggles follow status for a tag.
+   * 
+   * @param tagId - The ID of the tag to toggle
+   */
+  toggleFollowTag(tagId: number): void {
+    if (!this.user || !this.user.userId) {
+      return;
+    }
+
+    const isFollowing = this.followedTags.some(tag => tag.tagId === tagId);
+
+    if (isFollowing) {
+      // Unfollow
+      this.volunteerService.unfollowTag(this.user.userId, tagId).subscribe({
+        next: () => {
+          this.followedTags = this.followedTags.filter(tag => tag.tagId !== tagId);
+        },
+        error: (error) => {
+          if (error.status === 404) {
+            this.followedTagsError = 'Follow tags feature is not yet available.';
+          } else {
+            console.error('Error unfollowing tag', error);
+            this.followedTagsError = 'Failed to unfollow tag.';
+          }
+        }
+      });
+    } else {
+      // Follow
+      this.volunteerService.followTag(this.user.userId, tagId).subscribe({
+        next: (response) => {
+          // Add to followed tags list
+          const tag = this.availableTagsForFollowing.find(t => t.tagId === tagId);
+          if (tag) {
+            this.followedTags.push({
+              userId: this.user!.userId,
+              tagId: tagId,
+              followedAt: new Date().toISOString(),
+              tagName: tag.name
+            });
+          }
+        },
+        error: (error) => {
+          if (error.status === 404) {
+            this.followedTagsError = 'Follow tags feature is not yet available.';
+          } else {
+            console.error('Error following tag', error);
+            this.followedTagsError = 'Failed to follow tag.';
+          }
+        }
+      });
+    }
+  }
+
+  /**
+   * Gets filtered tags for the tag selection dropdown.
+   */
+  get filteredTagsForFollowing(): any[] {
+    if (!this.tagSearchQuery.trim()) {
+      return this.availableTagsForFollowing;
+    }
+    const query = this.tagSearchQuery.toLowerCase().trim();
+    return this.availableTagsForFollowing.filter(tag => 
+      tag.name.toLowerCase().includes(query) &&
+      !this.followedTags.some(followed => followed.tagId === tag.tagId)
+    );
+  }
+
+  /**
+   * Checks if a tag is being followed.
+   * 
+   * @param tagId - The ID of the tag to check
+   * @returns True if the tag is being followed
+   */
+  isTagFollowed(tagId: number): boolean {
+    return this.followedTags.some(tag => tag.tagId === tagId);
+  }
+
+  /**
+   * Gets chart data for event attendance breakdown (pie chart).
+   * 
+   * @returns Chart data configuration
+   */
+  getEventAttendanceChartData(): ChartData<'pie'> {
+    if (!this.volunteerMetrics) {
+      return { labels: [], datasets: [] };
+    }
+
+    return {
+      labels: ['Attended', 'No Show', 'Excused'],
+      datasets: [{
+        data: [
+          this.volunteerMetrics.totalEventsAttended,
+          this.volunteerMetrics.totalEventsNoShow,
+          this.volunteerMetrics.totalEventsExcused
+        ],
+        backgroundColor: ['#28a745', '#dc3545', '#ffc107'],
+        borderColor: ['#1e7e34', '#c82333', '#e0a800'],
+        borderWidth: 2
+      }]
+    };
+  }
+
+  /**
+   * Gets chart data for monthly hours (bar/line chart).
+   * 
+   * @returns Chart data configuration
+   */
+  getMonthlyHoursChartData(): ChartData<'bar' | 'line'> {
+    if (!this.volunteerMetrics || !this.volunteerMetrics.historyByMonth || this.volunteerMetrics.historyByMonth.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+
+    // Filter out any entries with missing month data
+    // API returns: yearMonth, but frontend expects: month
+    let validMonths = this.volunteerMetrics.historyByMonth.filter(m => {
+      if (!m) return false;
+      const monthValue = m.month || (m as any).yearMonth;
+      return !!monthValue;
+    });
+    
+    if (validMonths.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+
+    const labels = validMonths.map(m => {
+      const monthValue = m.month || (m as any).yearMonth;
+      if (!monthValue) return 'Unknown';
+      const [year, month] = monthValue.split('-');
+      if (!year || !month) return 'Invalid Date';
+      const date = new Date(parseInt(year), parseInt(month) - 1);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    });
+
+    return {
+      labels: labels,
+      datasets: [{
+        label: 'Hours Attended',
+        data: validMonths.map(m => m.hoursAttended ?? (m as any).hours_attended ?? 0),
+        backgroundColor: 'rgba(40, 167, 69, 0.6)',
+        borderColor: '#28a745',
+        borderWidth: 2
+      }]
+    };
+  }
+
+  /**
+   * Gets chart data for monthly events (bar/line chart).
+   * 
+   * @returns Chart data configuration
+   */
+  getMonthlyEventsChartData(): ChartData<'bar' | 'line'> {
+    if (!this.volunteerMetrics || !this.volunteerMetrics.historyByMonth || this.volunteerMetrics.historyByMonth.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+
+    // Filter out any entries with missing month data
+    // API returns: yearMonth, but frontend expects: month
+    let validMonths = this.volunteerMetrics.historyByMonth.filter(m => {
+      if (!m) return false;
+      const monthValue = m.month || (m as any).yearMonth;
+      return !!monthValue;
+    });
+    
+    if (validMonths.length === 0) {
+      return { labels: [], datasets: [] };
+    }
+
+    const labels = validMonths.map(m => {
+      const monthValue = m.month || (m as any).yearMonth;
+      if (!monthValue) return 'Unknown';
+      const [year, month] = monthValue.split('-');
+      if (!year || !month) return 'Invalid Date';
+      const date = new Date(parseInt(year), parseInt(month) - 1);
+      if (isNaN(date.getTime())) return 'Invalid Date';
+      return date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+    });
+
+    return {
+      labels: labels,
+      datasets: [{
+        label: 'Events Attended',
+        data: validMonths.map(m => m.eventsAttended ?? (m as any).events_attended ?? 0),
+        backgroundColor: 'rgba(31, 125, 96, 0.6)',
+        borderColor: '#1f7d60',
+        borderWidth: 2
+      }]
+    };
+  }
+
+  /**
+   * Gets chart options for pie charts.
+   * 
+   * @returns Chart options
+   */
+  getPieChartOptions(): ChartConfiguration<'pie'>['options'] {
+    return {
+      responsive: true,
+      maintainAspectRatio: true,
+      aspectRatio: 1, // Force 1:1 aspect ratio for circular pie charts
+      plugins: {
+        legend: {
+          position: 'bottom'
+        },
+        tooltip: {
+          callbacks: {
+            label: (context) => {
+              const label = context.label || '';
+              const value = context.parsed || 0;
+              const total = context.dataset.data.reduce((a: number, b: number) => a + b, 0);
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0';
+              return `${label}: ${value} (${percentage}%)`;
+            }
+          }
+        }
+      }
+    };
+  }
+
+  /**
+   * Gets chart options for bar/line charts.
+   * 
+   * @returns Chart options
+   */
+  getBarLineChartOptions(): ChartConfiguration<'bar' | 'line'>['options'] {
+    return {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        y: {
+          beginAtZero: true,
+          ticks: {
+            stepSize: 1
+          }
+        }
+      },
+      plugins: {
+        legend: {
+          display: true,
+          position: 'top'
+        }
+      }
+    };
+  }
+
+  // ========== Pagination Methods ==========
+
+  /**
+   * Updates pagination for events based on current tab.
+   */
+  updateEventsPagination(): void {
+    const sourceArray = this.activeEventTab === 'upcoming' ? this.upcomingEvents : this.pastEvents;
+    const start = (this.eventsCurrentPage - 1) * this.eventsPageSize;
+    const paginated = sourceArray.slice(start, start + this.eventsPageSize);
+    
+    if (this.activeEventTab === 'upcoming') {
+      this.paginatedUpcomingEvents = paginated;
+    } else {
+      this.paginatedPastEvents = paginated;
+    }
+  }
+
+  /**
+   * Gets total pages for events.
+   */
+  get eventsTotalPages(): number {
+    const sourceArray = this.activeEventTab === 'upcoming' ? this.upcomingEvents : this.pastEvents;
+    return sourceArray.length === 0 ? 1 : Math.ceil(sourceArray.length / this.eventsPageSize);
+  }
+
+  /**
+   * Gets page numbers for events pagination.
+   */
+  get eventsPageNumbers(): number[] {
+    return Array.from({ length: this.eventsTotalPages }, (_, index) => index + 1);
+  }
+
+  /**
+   * Changes the page size for events.
+   */
+  changeEventsPageSize(size: string | number): void {
+    this.eventsPageSize = Number(size);
+    this.eventsCurrentPage = 1;
+    this.updateEventsPagination();
+  }
+
+  /**
+   * Navigates to a specific page for events.
+   */
+  goToEventsPage(page: number): void {
+    if (page < 1 || page > this.eventsTotalPages) return;
+    this.eventsCurrentPage = page;
+    this.updateEventsPagination();
+  }
+
+  /**
+   * Updates pagination for certificates.
+   */
+  updateCertificatesPagination(): void {
+    const start = (this.certificatesCurrentPage - 1) * this.certificatesPageSize;
+    this.paginatedCertificates = this.userCertificates.slice(start, start + this.certificatesPageSize);
+  }
+
+  /**
+   * Gets total pages for certificates.
+   */
+  get certificatesTotalPages(): number {
+    return this.userCertificates.length === 0 ? 1 : Math.ceil(this.userCertificates.length / this.certificatesPageSize);
+  }
+
+  /**
+   * Gets page numbers for certificates pagination.
+   */
+  get certificatesPageNumbers(): number[] {
+    return Array.from({ length: this.certificatesTotalPages }, (_, index) => index + 1);
+  }
+
+  /**
+   * Changes the page size for certificates.
+   */
+  changeCertificatesPageSize(size: string | number): void {
+    this.certificatesPageSize = Number(size);
+    this.certificatesCurrentPage = 1;
+    this.updateCertificatesPagination();
+  }
+
+  /**
+   * Navigates to a specific page for certificates.
+   */
+  goToCertificatesPage(page: number): void {
+    if (page < 1 || page > this.certificatesTotalPages) return;
+    this.certificatesCurrentPage = page;
+    this.updateCertificatesPagination();
+  }
+
+  /**
+   * Updates pagination for support messages.
+   */
+  updateSupportMessagesPagination(): void {
+    const start = (this.supportMessagesCurrentPage - 1) * this.supportMessagesPageSize;
+    this.paginatedSupportMessages = this.userSupportMessages.slice(start, start + this.supportMessagesPageSize);
+  }
+
+  /**
+   * Gets total pages for support messages.
+   */
+  get supportMessagesTotalPages(): number {
+    return this.userSupportMessages.length === 0 ? 1 : Math.ceil(this.userSupportMessages.length / this.supportMessagesPageSize);
+  }
+
+  /**
+   * Gets page numbers for support messages pagination.
+   */
+  get supportMessagesPageNumbers(): number[] {
+    return Array.from({ length: this.supportMessagesTotalPages }, (_, index) => index + 1);
+  }
+
+  /**
+   * Changes the page size for support messages.
+   */
+  changeSupportMessagesPageSize(size: string | number): void {
+    this.supportMessagesPageSize = Number(size);
+    this.supportMessagesCurrentPage = 1;
+    this.updateSupportMessagesPagination();
+  }
+
+  /**
+   * Navigates to a specific page for support messages.
+   */
+  goToSupportMessagesPage(page: number): void {
+    if (page < 1 || page > this.supportMessagesTotalPages) return;
+    this.supportMessagesCurrentPage = page;
+    this.updateSupportMessagesPagination();
+  }
+
+  /**
+   * Handles event tab change and updates pagination.
+   */
+  setActiveEventTab(tab: 'upcoming' | 'past'): void {
+    this.activeEventTab = tab;
+    this.eventsCurrentPage = 1;
+    this.updateEventsPagination();
+  }
+
+  // ========== Metrics Export Methods ==========
+
+  /**
+   * Downloads volunteer metrics as a PDF report.
+   * Includes summary statistics, data tables, and chart images.
+   */
+  downloadMetricsAsPDF(): void {
+    if (!this.volunteerMetrics || !this.user) {
+      return;
+    }
+
+    // Ensure metrics section is expanded so charts are visible for capture
+    this.metricsSectionExpanded = true;
+
+    // Wait a moment for charts to render, then generate PDF
+    setTimeout(() => {
+      this.generatePDFWithCharts();
+    }, 500);
+  }
+
+  /**
+   * Internal method to generate the PDF with charts.
+   * Called after ensuring charts are visible and rendered.
+   */
+  private generatePDFWithCharts(): void {
+    if (!this.volunteerMetrics || !this.user) {
+      return;
+    }
+
+    try {
+      const doc = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: 'a4'
+      });
+
+      const primaryColor = [47, 125, 96];
+      const secondaryColor = [16, 185, 129];
+      const textColor = [30, 41, 59];
+      const pageWidth = doc.internal.pageSize.getWidth();
+      const pageHeight = doc.internal.pageSize.getHeight();
+      let yPosition = 20;
+
+      // Helper function to add a new page if needed
+      const checkPageBreak = (requiredSpace: number): void => {
+        if (yPosition + requiredSpace > pageHeight - 20) {
+          doc.addPage();
+          yPosition = 20;
+        }
+      };
+
+      // Header with background
+      doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+      doc.rect(0, 0, pageWidth, 40, 'F');
+
+      // Title
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(24);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Volunteer Metrics Report', pageWidth / 2, 20, { align: 'center' });
+
+      // User name
+      doc.setFontSize(16);
+      doc.setFont('helvetica', 'normal');
+      doc.text(`${this.user.firstName} ${this.user.lastName}`, pageWidth / 2, 30, { align: 'center' });
+
+      // Date
+      doc.setFontSize(10);
+      doc.text(`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`, pageWidth / 2, 36, { align: 'center' });
+
+      yPosition = 50;
+
+      // Summary Statistics Section
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Summary Statistics', 20, yPosition);
+      yPosition += 10;
+
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'normal');
+      const summaryData = [
+        ['Metric', 'Value'],
+        ['Total Events Registered', this.volunteerMetrics.totalEventsRegistered.toString()],
+        ['Events Attended', this.volunteerMetrics.totalEventsAttended.toString()],
+        ['Events No Show', this.volunteerMetrics.totalEventsNoShow.toString()],
+        ['Events Excused', this.volunteerMetrics.totalEventsExcused.toString()],
+        ['Total Hours Attended', this.volunteerMetrics.totalHoursAttended.toString()],
+        ['Upcoming Events', this.volunteerMetrics.upcomingEventsCount.toString()],
+        ['Canceled by Volunteer', this.volunteerMetrics.canceledByVolunteerCount.toString()]
+      ];
+
+      // Draw summary table
+      doc.setFillColor(245, 247, 250);
+      doc.rect(20, yPosition - 5, pageWidth - 40, summaryData.length * 7 + 5, 'F');
+      
+      doc.setDrawColor(200, 200, 200);
+      doc.setLineWidth(0.5);
+      
+      let tableY = yPosition;
+      summaryData.forEach((row, index) => {
+        if (index === 0) {
+          // Header row
+          doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+          doc.rect(20, tableY - 5, pageWidth - 40, 7, 'F');
+          doc.setTextColor(255, 255, 255);
+          doc.setFont('helvetica', 'bold');
+        } else {
+          doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+          doc.setFont('helvetica', 'normal');
+        }
+        
+        doc.text(row[0], 25, tableY);
+        doc.text(row[1], pageWidth - 25, tableY, { align: 'right' });
+        
+        if (index < summaryData.length - 1) {
+          doc.line(20, tableY + 2, pageWidth - 20, tableY + 2);
+        }
+        
+        tableY += 7;
+      });
+
+      yPosition = tableY + 15;
+
+      // Monthly History Section
+      if (this.volunteerMetrics.historyByMonth && this.volunteerMetrics.historyByMonth.length > 0) {
+        checkPageBreak(60);
+
+        doc.setFontSize(18);
+        doc.setFont('helvetica', 'bold');
+        doc.text('Monthly History', 20, yPosition);
+        yPosition += 10;
+
+        const monthlyData = [['Month', 'Events Attended', 'Hours Attended']];
+        this.volunteerMetrics.historyByMonth.forEach(month => {
+          const monthValue = month.month || (month as any).yearMonth;
+          if (monthValue) {
+            const [year, monthNum] = monthValue.split('-');
+            const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+            const monthName = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+            monthlyData.push([
+              monthName,
+              (month.eventsAttended ?? (month as any).events_attended ?? 0).toString(),
+              (month.hoursAttended ?? (month as any).hours_attended ?? 0).toString()
+            ]);
+          }
+        });
+
+        // Draw monthly table
+        doc.setFillColor(245, 247, 250);
+        const tableHeight = monthlyData.length * 6 + 5;
+        doc.rect(20, yPosition - 5, pageWidth - 40, tableHeight, 'F');
+
+        let monthlyTableY = yPosition;
+        monthlyData.forEach((row, index) => {
+          if (index === 0) {
+            doc.setFillColor(primaryColor[0], primaryColor[1], primaryColor[2]);
+            doc.rect(20, monthlyTableY - 5, pageWidth - 40, 6, 'F');
+            doc.setTextColor(255, 255, 255);
+            doc.setFont('helvetica', 'bold');
+          } else {
+            doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+            doc.setFont('helvetica', 'normal');
+          }
+
+          doc.text(row[0], 25, monthlyTableY);
+          doc.text(row[1], (pageWidth - 40) / 2 + 20, monthlyTableY, { align: 'center' });
+          doc.text(row[2], pageWidth - 25, monthlyTableY, { align: 'right' });
+
+          if (index < monthlyData.length - 1) {
+            doc.line(20, monthlyTableY + 1, pageWidth - 20, monthlyTableY + 1);
+          }
+
+          monthlyTableY += 6;
+        });
+
+        yPosition = monthlyTableY + 15;
+      }
+
+      // Charts Section - Capture and add chart images
+      checkPageBreak(80);
+      doc.setFontSize(18);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(textColor[0], textColor[1], textColor[2]);
+      doc.text('Charts', 20, yPosition);
+      yPosition += 10;
+
+      // Capture and add charts asynchronously
+      const addChartsToPDF = async () => {
+        if (!this.user) return; // Ensure user is still available
+        // 1. Event Attendance Pie Chart
+        const pieChartCanvas = document.querySelector('canvas[data-chart-type="pie"]') as HTMLCanvasElement;
+        if (pieChartCanvas) {
+          try {
+            const pieChartImage = pieChartCanvas.toDataURL('image/png');
+            checkPageBreak(60);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            doc.text('Event Attendance Breakdown', 20, yPosition);
+            yPosition += 8;
+            
+            // Pie charts should be circular (1:1 aspect ratio)
+            // Force square dimensions regardless of canvas dimensions to prevent distortion
+            const maxImgWidth = pageWidth - 40;
+            const imgWidth = maxImgWidth;
+            const imgHeight = imgWidth; // Force 1:1 aspect ratio for circular pie charts
+            
+            doc.addImage(pieChartImage, 'PNG', 20, yPosition, imgWidth, imgHeight);
+            yPosition += imgHeight + 10;
+          } catch (error) {
+            console.error('Error capturing pie chart:', error);
+          }
+        }
+
+        // 2. Monthly Events Chart (bar or line) - get the first visible chart
+        const barCharts = document.querySelectorAll('canvas[type="bar"]');
+        const lineCharts = document.querySelectorAll('canvas[type="line"]');
+        const monthlyChart = (barCharts.length > 0 ? barCharts[0] : (lineCharts.length > 0 ? lineCharts[0] : null)) as HTMLCanvasElement;
+        
+        if (monthlyChart) {
+          try {
+            const monthlyChartImage = monthlyChart.toDataURL('image/png');
+            checkPageBreak(60);
+            doc.setFontSize(14);
+            doc.setFont('helvetica', 'bold');
+            const chartTitle = this.selectedMetricChart === 'events' ? 'Monthly Events Attended' : 'Monthly Hours Attended';
+            doc.text(chartTitle, 20, yPosition);
+            yPosition += 8;
+            
+            const imgWidth = pageWidth - 40;
+            const imgHeight = (imgWidth * 0.6);
+            doc.addImage(monthlyChartImage, 'PNG', 20, yPosition, imgWidth, imgHeight);
+            yPosition += imgHeight + 10;
+          } catch (error) {
+            console.error('Error capturing monthly chart:', error);
+          }
+        }
+
+        // Footer
+        checkPageBreak(15);
+        const footerY = pageHeight - 15;
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('This report was generated from VolunteerSync. For interactive charts and detailed data, visit your profile page.', pageWidth / 2, footerY, { align: 'center' });
+
+        // Save the PDF
+        if (this.user) {
+          const fileName = `volunteer-metrics-${this.user.firstName}-${this.user.lastName}-${new Date().toISOString().split('T')[0]}.pdf`;
+          doc.save(fileName);
+        }
+      };
+
+      // Execute chart capture and PDF generation
+      addChartsToPDF().catch((error) => {
+        console.error('Error adding charts to PDF:', error);
+        // Still save the PDF even if charts fail
+        const footerY = pageHeight - 15;
+        doc.setFontSize(8);
+        doc.setTextColor(150, 150, 150);
+        doc.text('This report was generated from VolunteerSync. Charts could not be included.', pageWidth / 2, footerY, { align: 'center' });
+        if (this.user) {
+          const fileName = `volunteer-metrics-${this.user.firstName}-${this.user.lastName}-${new Date().toISOString().split('T')[0]}.pdf`;
+          doc.save(fileName);
+        }
+      });
+    } catch (error) {
+      console.error('Error generating PDF:', error);
+      this.error = 'Failed to generate PDF report. Please try again.';
+    }
+  }
+
+  /**
+   * Downloads volunteer metrics as an Excel file.
+   * Includes all data in spreadsheet format with multiple sheets.
+   */
+  downloadMetricsAsExcel(): void {
+    if (!this.volunteerMetrics || !this.user) {
+      return;
+    }
+
+    try {
+      const workbook = XLSX.utils.book_new();
+
+      // Summary Statistics Sheet
+      const summaryData = [
+        ['Volunteer Metrics Report'],
+        [`Generated: ${new Date().toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}`],
+        [`Volunteer: ${this.user.firstName} ${this.user.lastName}`],
+        [`Email: ${this.user.email}`],
+        [],
+        ['Metric', 'Value'],
+        ['Total Events Registered', this.volunteerMetrics.totalEventsRegistered],
+        ['Events Attended', this.volunteerMetrics.totalEventsAttended],
+        ['Events No Show', this.volunteerMetrics.totalEventsNoShow],
+        ['Events Excused', this.volunteerMetrics.totalEventsExcused],
+        ['Total Hours Attended', this.volunteerMetrics.totalHoursAttended],
+        ['Upcoming Events', this.volunteerMetrics.upcomingEventsCount],
+        ['Canceled by Volunteer', this.volunteerMetrics.canceledByVolunteerCount]
+      ];
+      const summarySheet = XLSX.utils.aoa_to_sheet(summaryData);
+      XLSX.utils.book_append_sheet(workbook, summarySheet, 'Summary');
+
+      // Monthly History Sheet
+      if (this.volunteerMetrics.historyByMonth && this.volunteerMetrics.historyByMonth.length > 0) {
+        const monthlyData = [['Month', 'Events Attended', 'Hours Attended']];
+        this.volunteerMetrics.historyByMonth.forEach(month => {
+          const monthValue = month.month || (month as any).yearMonth;
+          if (monthValue) {
+            const [year, monthNum] = monthValue.split('-');
+            const date = new Date(parseInt(year), parseInt(monthNum) - 1);
+            const monthName = date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+            monthlyData.push([
+              monthName,
+              month.eventsAttended ?? (month as any).events_attended ?? 0,
+              month.hoursAttended ?? (month as any).hours_attended ?? 0
+            ]);
+          }
+        });
+        const monthlySheet = XLSX.utils.aoa_to_sheet(monthlyData);
+        XLSX.utils.book_append_sheet(workbook, monthlySheet, 'Monthly History');
+      }
+
+      // Calculate percentages sheet
+      const totalEvents = this.volunteerMetrics.totalEventsRegistered;
+      if (totalEvents > 0) {
+        const percentageData = [
+          ['Attendance Breakdown'],
+          [],
+          ['Category', 'Count', 'Percentage'],
+          ['Attended', this.volunteerMetrics.totalEventsAttended, `${((this.volunteerMetrics.totalEventsAttended / totalEvents) * 100).toFixed(1)}%`],
+          ['No Show', this.volunteerMetrics.totalEventsNoShow, `${((this.volunteerMetrics.totalEventsNoShow / totalEvents) * 100).toFixed(1)}%`],
+          ['Excused', this.volunteerMetrics.totalEventsExcused, `${((this.volunteerMetrics.totalEventsExcused / totalEvents) * 100).toFixed(1)}%`]
+        ];
+        const percentageSheet = XLSX.utils.aoa_to_sheet(percentageData);
+        XLSX.utils.book_append_sheet(workbook, percentageSheet, 'Attendance Breakdown');
+      }
+
+      // Save the Excel file
+      const fileName = `volunteer-metrics-${this.user.firstName}-${this.user.lastName}-${new Date().toISOString().split('T')[0]}.xlsx`;
+      XLSX.writeFile(workbook, fileName);
+    } catch (error) {
+      console.error('Error generating Excel file:', error);
+      this.error = 'Failed to generate Excel file. Please try again.';
+    }
   }
 }

@@ -66,21 +66,42 @@
                         <div class="register-field">
                             <label for="password">Password *</label>
                             <input type="password" id="password" name="password" [(ngModel)]="formData.password"
-                                maxlength="100" minlength="8" required>
+                                maxlength="100" minlength="8" required (input)="validatePasswordRequirements()">
                         </div>
                         <div class="register-field">
                             <label for="confirmPassword">Confirm Password *</label>
                             <input type="password" id="confirmPassword" name="confirmPassword"
-                                [(ngModel)]="formData.confirmPassword" maxlength="100" required>
+                                [(ngModel)]="formData.confirmPassword" maxlength="100" required (input)="checkPasswordsMatch()">
+                            <div class="password-match-feedback" *ngIf="formData.confirmPassword">
+                                <i class="bi" [ngClass]="passwordsMatch ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                                <span [ngClass]="passwordsMatch ? 'text-success' : 'text-danger'">
+                                    {{ passwordsMatch ? 'Passwords match' : 'Passwords do not match' }}
+                                </span>
+                            </div>
                         </div>
                     </div>
                     <div class="register-password-requirements">
                         <strong>Password Requirements:</strong>
-                        <span>• Must be between 8 and 100 characters</span>
-                        <span>• Must contain at least one uppercase letter (A-Z)</span>
-                        <span>• Must contain at least one lowercase letter (a-z)</span>
-                        <span>• Must contain at least one number (0-9)</span>
-                        <span>• Must contain at least one special character (&#64;$!%*?&)</span>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.length}">
+                            <i class="bi" [ngClass]="passwordRequirements.length ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must be between 8 and 100 characters</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.uppercase}">
+                            <i class="bi" [ngClass]="passwordRequirements.uppercase ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one uppercase letter (A-Z)</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.lowercase}">
+                            <i class="bi" [ngClass]="passwordRequirements.lowercase ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one lowercase letter (a-z)</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.number}">
+                            <i class="bi" [ngClass]="passwordRequirements.number ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one number (0-9)</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.special}">
+                            <i class="bi" [ngClass]="passwordRequirements.special ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one special character (&#64;$!%*?&)</span>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -119,8 +140,19 @@
                 </div>
             </div>
 
+            <div class="register-terms">
+                <div class="register-terms__checkbox">
+                    <input type="checkbox" id="agreeToTerms" name="agreeToTerms" [(ngModel)]="agreedToTerms" required>
+                    <label for="agreeToTerms">
+                        I agree to VolunteerSync's 
+                        <a routerLink="/compliance" target="_blank" (click)="$event.stopPropagation()">Terms of Use</a>
+                        <span class="required-asterisk">*</span>
+                    </label>
+                </div>
+            </div>
+
             <div class="register-actions">
-                <button type="submit" class="btn btn-success btn-lg" [disabled]="isSubmitting">
+                <button type="submit" class="btn btn-success btn-lg" [disabled]="isSubmitting || !agreedToTerms">
                     {{ isSubmitting ? 'Submitting…' : 'Complete Registration' }}
                 </button>
             </div>

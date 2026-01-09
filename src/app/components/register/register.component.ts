@@ -41,6 +41,17 @@ export class RegisterComponent implements OnInit {
     errorMessage: string = '';
     returnUrl: string = '';
     isSubmitting: boolean = false;
+    
+    // Password validation feedback
+    passwordRequirements = {
+        length: false,
+        uppercase: false,
+        lowercase: false,
+        number: false,
+        special: false
+    };
+    passwordsMatch = false;
+    agreedToTerms = false;
 
     constructor(
         private volunteerService: VolunteerService,
@@ -77,6 +88,12 @@ export class RegisterComponent implements OnInit {
 
         if (!this.selectedRole) {
             this.errorMessage = 'Please choose whether you are registering as a volunteer or organizer.';
+            return;
+        }
+
+        // Check if user agreed to Terms of Use
+        if (!this.agreedToTerms) {
+            this.errorMessage = 'You must agree to VolunteerSync\'s Terms of Use to create an account.';
             return;
         }
 
@@ -180,14 +197,11 @@ export class RegisterComponent implements OnInit {
         }
 
         this.isSubmitting = true;
-        console.log('Starting registration process...');
 
         // If user is an organizer, create the organization first
         if (this.formData.role === 'organizer') {
-            console.log('Registering an organizer - creating organization first');
             this.createOrganizationThenUser();
         } else {
-            console.log('Registering a volunteer - creating user directly');
             this.createUser();
         }
     }
@@ -195,6 +209,61 @@ export class RegisterComponent implements OnInit {
     selectRole(role: 'volunteer' | 'organizer'): void {
         this.selectedRole = role;
         this.formData.role = role;
+        this.resetPasswordValidation();
+    }
+
+    /**
+     * Resets password validation feedback to initial state.
+     */
+    resetPasswordValidation(): void {
+        this.passwordRequirements = {
+            length: false,
+            uppercase: false,
+            lowercase: false,
+            number: false,
+            special: false
+        };
+        this.passwordsMatch = false;
+    }
+
+    /**
+     * Validates password in real-time and updates requirement feedback.
+     * Called on input change for the password field.
+     */
+    validatePasswordRequirements(): void {
+        const password = this.formData.password || '';
+        
+        this.passwordRequirements = {
+            length: password.length >= 8 && password.length <= 100,
+            uppercase: /[A-Z]/.test(password),
+            lowercase: /[a-z]/.test(password),
+            number: /[0-9]/.test(password),
+            special: /[@$!%*?&]/.test(password)
+        };
+        
+        // Also check password match when password changes
+        this.checkPasswordsMatch();
+    }
+
+    /**
+     * Checks if the password and confirm password match.
+     * Called on input change for either password field.
+     */
+    checkPasswordsMatch(): void {
+        if (this.formData.confirmPassword && this.formData.password) {
+            this.passwordsMatch = this.formData.password === this.formData.confirmPassword;
+        } else {
+            this.passwordsMatch = false;
+        }
+    }
+
+    /**
+     * Checks if all password requirements are met.
+     * 
+     * @returns True if all requirements are satisfied
+     */
+    get allPasswordRequirementsMet(): boolean {
+        return Object.values(this.passwordRequirements).every(req => req === true);
     }
 
     /**
@@ -281,20 +350,16 @@ export class RegisterComponent implements OnInit {
                     userResponse.userId &&
                     (!userResponse.organizationId || userResponse.organizationId !== this.formData.organizationId)) {
 
-                    console.log('User needs organizationId update. Using new updateUserOrganization method...');
-
                     // Use the dedicated method for updating just the organizationId
                     this.volunteerService.updateUserOrganization(
                         userResponse.userId,
                         this.formData.organizationId
                     ).subscribe({
                         next: (updatedResponse) => {
-                            console.log('User updated with organizationId:', updatedResponse);
                             this.handleSuccessfulRegistration();
                         },
                         error: (updateError) => {
-                            console.error('Failed to update user with organizationId', updateError);
-                            // Still consider the registration successful, just log the error
+                            // Still consider the registration successful
                             this.handleSuccessfulRegistration();
                         }
                     });
@@ -303,12 +368,6 @@ export class RegisterComponent implements OnInit {
                 }
             },
             error: (error) => {
-                console.error('Registration failed', error);
-                console.error('Error status:', error.status);
-                console.error('Error statusText:', error.statusText);
-                console.error('Error message:', error.message);
-                console.error('Error error object:', JSON.stringify(error.error, null, 2));
-                
                 // Try to extract error message from various possible formats
                 let errorMsg = 'Registration failed. Please try again.';
                 
@@ -316,30 +375,21 @@ export class RegisterComponent implements OnInit {
                     // Check for message property
                     if (error.error.message) {
                         errorMsg = error.error.message;
-                        console.log('Extracted error message from error.error.message:', errorMsg);
                     }
                     // Check if error is a string
                     else if (typeof error.error === 'string') {
                         errorMsg = error.error;
-                        console.log('Extracted error message from error.error (string):', errorMsg);
                     }
                     // Check for error property
                     else if (error.error.error) {
                         errorMsg = error.error.error;
-                        console.log('Extracted error message from error.error.error:', errorMsg);
                     }
                     // Check for nested error object
                     else if (error.error.error && typeof error.error.error === 'string') {
                         errorMsg = error.error.error;
-                        console.log('Extracted error message from nested error.error.error:', errorMsg);
-                    }
-                    // Log the full error object structure for debugging
-                    else {
-                        console.log('Could not extract error message. Full error.error structure:', error.error);
                     }
                 }
                 
-                console.log('Final error message to display:', errorMsg);
                 this.errorMessage = errorMsg;
                 this.isSubmitting = false;
             }

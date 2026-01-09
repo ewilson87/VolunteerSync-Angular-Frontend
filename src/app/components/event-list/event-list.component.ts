@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, ActivatedRoute } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -8,6 +8,13 @@ import { Organization } from '../../models/organization.model';
 import { AuthService } from '../../services/auth.service';
 import { User } from '../../models/user.model';
 import { Signup } from '../../models/signup.model';
+import { Tag, EventTagWithDetails } from '../../models/tag.model';
+import { forkJoin, of } from 'rxjs';
+import { catchError, map } from 'rxjs/operators';
+
+interface EventWithTags extends Omit<Event, 'tags'> {
+    tags?: Tag[];
+}
 
 @Component({
     selector: 'app-event-list',
@@ -17,10 +24,10 @@ import { Signup } from '../../models/signup.model';
     styleUrl: './event-list.component.css'
 })
 export class EventListComponent implements OnInit {
-    events: Event[] = [];
-    filteredEvents: Event[] = [];
-    upcomingEvents: Event[] = [];
-    pastEvents: Event[] = [];
+    events: EventWithTags[] = [];
+    filteredEvents: EventWithTags[] = [];
+    upcomingEvents: EventWithTags[] = [];
+    pastEvents: EventWithTags[] = [];
     loading: boolean = true;
     error: string = '';
     isLoggedIn: boolean = false;
@@ -33,15 +40,20 @@ export class EventListComponent implements OnInit {
     dateStartFilter: string = '';
     dateEndFilter: string = '';
     organizationFilter: number = 0;
+    selectedTagIds: number[] = [];
     organizations: Organization[] = [];
+    availableTags: Tag[] = [];
+    tagsLoading: boolean = false;
+    tagsDropdownOpen: boolean = false;
+    tagSearchQuery: string = '';
     sortColumn: 'title' | 'date' | 'location' | 'tags' | 'volunteers' = 'date';
     sortDirection: 'asc' | 'desc' = 'asc';
     registeredEventIds: Set<number> = new Set<number>();
-    featuredEvent: Event | null = null;
+    featuredEvent: EventWithTags | null = null;
     pageSizeOptions: number[] = [10, 25, 50, 100];
     pageSize = 10;
     currentPage = 1;
-    paginatedEvents: Event[] = [];
+    paginatedEvents: EventWithTags[] = [];
 
     // US States list (alphabetical by state name)
     readonly usStates = [
@@ -130,6 +142,7 @@ export class EventListComponent implements OnInit {
         });
 
         this.loadOrganizations();
+        this.loadTags();
 
         this.route.queryParams.subscribe(params => {
             if (params['showPast'] === 'true') {
@@ -139,7 +152,16 @@ export class EventListComponent implements OnInit {
             if (params['organizationId']) {
                 this.organizationFilter = +params['organizationId'];
                 this.applyFilters();
+            } else if (params['tagId']) {
+                // Handle tag filter from query parameter
+                const tagId = +params['tagId'];
+                this.selectedTagIds = [tagId];
+                // Load events first, then applyFilters will be called in finishLoadingEvents
+                this.loadEvents();
             } else {
+                // Clear any previous filters
+                this.organizationFilter = 0;
+                this.selectedTagIds = [];
                 this.loadEvents();
             }
         });
@@ -151,7 +173,7 @@ export class EventListComponent implements OnInit {
      * @param event - The event to check
      * @returns True if the event date is before today, false otherwise
      */
-    isEventInPast(event: Event): boolean {
+    isEventInPast(event: EventWithTags): boolean {
         const today = new Date();
         today.setHours(0, 0, 0, 0);
         const eventDate = this.parseEventDate(event.eventDate);
@@ -216,23 +238,67 @@ export class EventListComponent implements OnInit {
         });
     }
 
+    /**
+     * Loads all available tags for filtering.
+     */
+    loadTags(): void {
+        this.tagsLoading = true;
+        this.volunteerService.getAllTags().subscribe({
+            next: (tags) => {
+                this.availableTags = tags || [];
+                this.tagsLoading = false;
+            },
+            error: (error) => {
+                console.error('Error loading tags', error);
+                this.availableTags = [];
+                this.tagsLoading = false;
+            }
+        });
+    }
+
     loadEvents(): void {
         this.loading = true;
         this.volunteerService.getEvents().subscribe({
             next: (events) => {
-                this.events = events;
+                // Convert events to EventWithTags and load tags for each
+                const eventsWithTags: EventWithTags[] = events.map(event => ({
+                    ...event,
+                    tags: [] as Tag[]
+                }));
 
-                // Separate events into upcoming and past
-                this.upcomingEvents = this.sortEvents(events.filter(event => !this.isEventInPast(event)));
-                this.pastEvents = this.sortEvents(events.filter(event => this.isEventInPast(event)));
-                this.featuredEvent = this.selectFeaturedEvent(this.upcomingEvents);
+                // Load tags for all events in parallel
+                const tagObservables = eventsWithTags
+                    .filter(event => event.eventId)
+                    .map(event =>
+                        this.volunteerService.getTagsForEvent(event.eventId!).pipe(
+                            catchError(() => of([])),
+                            map((tags: EventTagWithDetails[]) => ({ eventId: event.eventId, tags }))
+                        )
+                    );
 
-                // By default, show only upcoming events unless showPastEvents is true
-                this.filteredEvents = this.showPastEvents ? [...this.pastEvents] : [...this.upcomingEvents];
-                this.currentPage = 1;
-                this.updateDisplayedEvents();
-
-                this.loading = false;
+                if (tagObservables.length > 0) {
+                    forkJoin(tagObservables).subscribe({
+                        next: (tagResults) => {
+                            // Map tags to events
+                            tagResults.forEach(({ eventId, tags }) => {
+                                const event = eventsWithTags.find(e => e.eventId === eventId);
+                                if (event) {
+                                    event.tags = tags.map(et => ({
+                                        tagId: et.tagId,
+                                        name: et.tagName || 'Unknown Tag'
+                                    } as Tag));
+                                }
+                            });
+                            this.finishLoadingEvents(eventsWithTags);
+                        },
+                        error: () => {
+                            // If tags fail to load, still show events without tags
+                            this.finishLoadingEvents(eventsWithTags);
+                        }
+                    });
+                } else {
+                    this.finishLoadingEvents(eventsWithTags);
+                }
             },
             error: (error) => {
                 console.error('Error loading events', error);
@@ -242,18 +308,56 @@ export class EventListComponent implements OnInit {
         });
     }
 
+    private finishLoadingEvents(events: EventWithTags[]): void {
+        this.events = events;
+
+        // Separate events into upcoming and past
+        this.upcomingEvents = this.sortEvents(events.filter(event => !this.isEventInPast(event)));
+        this.pastEvents = this.sortEvents(events.filter(event => this.isEventInPast(event)));
+        this.featuredEvent = this.selectFeaturedEvent(this.upcomingEvents);
+
+        // Apply filters including tag filter
+        this.applyFilters();
+        this.loading = false;
+    }
+
     applyFilters(): void {
-        if (!this.cityFilter && !this.stateFilter && !this.dateStartFilter && !this.dateEndFilter && !this.organizationFilter) {
-            // No filters applied, but respect the past/upcoming toggle
-            this.filteredEvents = this.showPastEvents ? [...this.pastEvents] : [...this.upcomingEvents];
-            this.filteredEvents = this.sortEvents(this.filteredEvents);
+        // Start with the appropriate base list
+        let baseEvents: EventWithTags[] = this.showPastEvents ? [...this.pastEvents] : [...this.upcomingEvents];
+
+        // Apply tag filter first (client-side)
+        if (this.selectedTagIds.length > 0) {
+            baseEvents = baseEvents.filter(event => {
+                if (!event.tags || event.tags.length === 0) {
+                    return false;
+                }
+                const eventTagIds = event.tags.map(t => t.tagId);
+                // Event must have at least one of the selected tags
+                return this.selectedTagIds.some(tagId => eventTagIds.includes(tagId));
+            });
+        }
+
+        // If no server-side filters needed, apply client-side filters and return
+        // Note: cityFilter is always handled client-side for partial matching
+        if (!this.stateFilter && !this.dateStartFilter && !this.dateEndFilter && !this.organizationFilter) {
+            // Apply client-side city filter if present
+            let cityFilteredEvents = baseEvents;
+            if (this.cityFilter && this.cityFilter.trim()) {
+                const citySearch = this.cityFilter.trim().toLowerCase();
+                cityFilteredEvents = cityFilteredEvents.filter(event => {
+                    if (!event.city) return false;
+                    return event.city.toLowerCase().includes(citySearch);
+                });
+            }
+            this.filteredEvents = this.sortEvents(cityFilteredEvents);
             this.currentPage = 1;
             this.updateDisplayedEvents();
             return;
         }
 
+        // Apply server-side filters (city filter is handled client-side for partial matching)
         const params: any = {};
-        if (this.cityFilter) params.city = this.cityFilter;
+        // Note: cityFilter is handled client-side in finishApplyingFilters for partial matching
         if (this.stateFilter) params.state = this.stateFilter;
         if (this.dateStartFilter) params.startDate = this.dateStartFilter;
         if (this.dateEndFilter) params.endDate = this.dateEndFilter;
@@ -261,27 +365,44 @@ export class EventListComponent implements OnInit {
 
         this.loading = true;
         this.volunteerService.searchEvents(params).subscribe({
-            next: (events) => {
-                // Apply the past/upcoming filter on top of the search results
-                let dateFilteredEvents = events;
-                if (this.dateStartFilter) {
-                    const start = this.parseEventDate(this.dateStartFilter);
-                    dateFilteredEvents = dateFilteredEvents.filter(event => this.parseEventDate(event.eventDate) >= start);
-                }
-                if (this.dateEndFilter) {
-                    const end = this.parseEventDate(this.dateEndFilter);
-                    dateFilteredEvents = dateFilteredEvents.filter(event => this.parseEventDate(event.eventDate) <= end);
-                }
+            next: (events: Event[]) => {
+                // Convert to EventWithTags and load tags
+                const eventsWithTags: EventWithTags[] = events.map((event: Event) => ({
+                    ...event,
+                    tags: [] as Tag[]
+                } as EventWithTags));
 
-                if (this.showPastEvents) {
-                    this.filteredEvents = dateFilteredEvents.filter(event => this.isEventInPast(event));
+                // Load tags for search results
+                const tagObservables = eventsWithTags
+                    .filter(event => event.eventId)
+                    .map(event =>
+                        this.volunteerService.getTagsForEvent(event.eventId!).pipe(
+                            catchError(() => of([])),
+                            map((tags: EventTagWithDetails[]) => ({ eventId: event.eventId, tags }))
+                        )
+                    );
+
+                if (tagObservables.length > 0) {
+                    forkJoin(tagObservables).subscribe({
+                        next: (tagResults) => {
+                            tagResults.forEach(({ eventId, tags }) => {
+                                const event = eventsWithTags.find(e => e.eventId === eventId);
+                                if (event) {
+                                    event.tags = tags.map(et => ({
+                                        tagId: et.tagId,
+                                        name: et.tagName || 'Unknown Tag'
+                                    } as Tag));
+                                }
+                            });
+                            this.finishApplyingFilters(eventsWithTags);
+                        },
+                        error: () => {
+                            this.finishApplyingFilters(eventsWithTags);
+                        }
+                    });
                 } else {
-                    this.filteredEvents = dateFilteredEvents.filter(event => !this.isEventInPast(event));
+                    this.finishApplyingFilters(eventsWithTags);
                 }
-                this.filteredEvents = this.sortEvents(this.filteredEvents);
-                this.currentPage = 1;
-                this.updateDisplayedEvents();
-                this.loading = false;
             },
             error: (error) => {
                 console.error('Error searching events', error);
@@ -291,12 +412,58 @@ export class EventListComponent implements OnInit {
         });
     }
 
+    private finishApplyingFilters(events: EventWithTags[]): void {
+        // Apply the past/upcoming filter
+        let dateFilteredEvents = events;
+        if (this.dateStartFilter) {
+            const start = this.parseEventDate(this.dateStartFilter);
+            dateFilteredEvents = dateFilteredEvents.filter(event => this.parseEventDate(event.eventDate) >= start);
+        }
+        if (this.dateEndFilter) {
+            const end = this.parseEventDate(this.dateEndFilter);
+            dateFilteredEvents = dateFilteredEvents.filter(event => this.parseEventDate(event.eventDate) <= end);
+        }
+
+        // Apply client-side city filter with partial matching (case-insensitive)
+        if (this.cityFilter && this.cityFilter.trim()) {
+            const citySearch = this.cityFilter.trim().toLowerCase();
+            dateFilteredEvents = dateFilteredEvents.filter(event => {
+                if (!event.city) return false;
+                return event.city.toLowerCase().includes(citySearch);
+            });
+        }
+
+        if (this.showPastEvents) {
+            this.filteredEvents = dateFilteredEvents.filter(event => this.isEventInPast(event));
+        } else {
+            this.filteredEvents = dateFilteredEvents.filter(event => !this.isEventInPast(event));
+        }
+
+        // Apply tag filter if tags are selected
+        if (this.selectedTagIds.length > 0) {
+            this.filteredEvents = this.filteredEvents.filter(event => {
+                if (!event.tags || event.tags.length === 0) {
+                    return false;
+                }
+                const eventTagIds = event.tags.map(t => t.tagId);
+                return this.selectedTagIds.some(tagId => eventTagIds.includes(tagId));
+            });
+        }
+
+        this.filteredEvents = this.sortEvents(this.filteredEvents);
+        this.currentPage = 1;
+        this.updateDisplayedEvents();
+        this.loading = false;
+    }
+
     clearFilters(): void {
         this.cityFilter = '';
         this.stateFilter = '';
         this.dateStartFilter = '';
         this.dateEndFilter = '';
         this.organizationFilter = 0;
+        this.selectedTagIds = [];
+        this.tagSearchQuery = '';
         // Reset to the appropriate list based on show past setting
         this.filteredEvents = this.showPastEvents ? [...this.pastEvents] : [...this.upcomingEvents];
         this.filteredEvents = this.sortEvents(this.filteredEvents);
@@ -334,7 +501,7 @@ export class EventListComponent implements OnInit {
         return this.registeredEventIds.has(eventId);
     }
 
-    private sortEvents(events: Event[]): Event[] {
+    private sortEvents(events: EventWithTags[]): EventWithTags[] {
         const sorted = [...events].sort((a, b) => {
             let aValue: string | number | Date = '';
             let bValue: string | number | Date = '';
@@ -355,8 +522,8 @@ export class EventListComponent implements OnInit {
                     bValue = `${b.city || ''} ${b.state || ''}`.trim().toLowerCase();
                     break;
                 case 'tags':
-                    aValue = (a.tags && a.tags.length > 0 ? a.tags.join(', ') : '').toLowerCase();
-                    bValue = (b.tags && b.tags.length > 0 ? b.tags.join(', ') : '').toLowerCase();
+                    aValue = (a.tags && a.tags.length > 0 ? a.tags.map((t: Tag) => t.name).join(', ') : '').toLowerCase();
+                    bValue = (b.tags && b.tags.length > 0 ? b.tags.map((t: Tag) => t.name).join(', ') : '').toLowerCase();
                     break;
                 case 'volunteers':
                     aValue = (a.numSignedUp || 0) / Math.max(a.numNeeded || 1, 1);
@@ -390,7 +557,7 @@ export class EventListComponent implements OnInit {
         });
     }
 
-    trackByEventId(index: number, event: Event): number | undefined {
+    trackByEventId(index: number, event: EventWithTags): number | undefined {
         return event.eventId ?? index;
     }
 
@@ -452,7 +619,48 @@ export class EventListComponent implements OnInit {
         return new Date(year, month - 1, day);
     }
 
-    private selectFeaturedEvent(events: Event[]): Event | null {
+    // Tag filtering methods
+    toggleTag(tagId: number): void {
+        const index = this.selectedTagIds.indexOf(tagId);
+        if (index > -1) {
+            this.selectedTagIds.splice(index, 1);
+        } else {
+            this.selectedTagIds.push(tagId);
+        }
+    }
+
+    removeTag(tagId: number): void {
+        this.selectedTagIds = this.selectedTagIds.filter(id => id !== tagId);
+    }
+
+    get filteredTags(): Tag[] {
+        if (!this.tagSearchQuery.trim()) {
+            return this.availableTags;
+        }
+        const query = this.tagSearchQuery.toLowerCase().trim();
+        return this.availableTags.filter(tag =>
+            tag.name.toLowerCase().includes(query)
+        );
+    }
+
+    get selectedTags(): Tag[] {
+        return this.availableTags.filter(tag => this.selectedTagIds.includes(tag.tagId));
+    }
+
+    closeTagsDropdown(): void {
+        this.tagsDropdownOpen = false;
+        this.tagSearchQuery = '';
+    }
+
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event: MouseEvent): void {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.event-tags-dropdown-wrapper')) {
+            this.closeTagsDropdown();
+        }
+    }
+
+    private selectFeaturedEvent(events: EventWithTags[]): EventWithTags | null {
         if (!events || events.length === 0) {
             return null;
         }
@@ -470,5 +678,42 @@ export class EventListComponent implements OnInit {
         const pool = upcomingWindow.length > 0 ? upcomingWindow : events;
         const index = Math.floor(Math.random() * pool.length);
         return pool[index] ?? null;
+    }
+
+    /**
+     * Converts 24-hour time format (HH:MM or HH:MM:SS) to 12-hour AM/PM format
+     * @param time24 - Time in 24-hour format (e.g., "14:30" or "14:30:00")
+     * @returns Time in 12-hour format with AM/PM (e.g., "2:30 PM")
+     */
+    formatTime12Hour(time24: string | null | undefined): string {
+        if (!time24) {
+            return '';
+        }
+
+        // Handle both HH:MM and HH:MM:SS formats
+        const timeParts = time24.trim().split(':');
+        if (timeParts.length < 2) {
+            return time24; // Return original if format is unexpected
+        }
+
+        const hour24 = parseInt(timeParts[0], 10);
+        const minute = parseInt(timeParts[1], 10);
+
+        if (isNaN(hour24) || isNaN(minute)) {
+            return time24; // Return original if parsing fails
+        }
+
+        let hour12 = hour24;
+        const amPm = hour24 >= 12 ? 'PM' : 'AM';
+
+        if (hour24 === 0) {
+            hour12 = 12; // Midnight
+        } else if (hour24 === 12) {
+            hour12 = 12; // Noon
+        } else if (hour24 > 12) {
+            hour12 = hour24 - 12;
+        }
+
+        return `${hour12}:${minute.toString().padStart(2, '0')} ${amPm}`;
     }
 } 

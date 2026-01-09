@@ -32,7 +32,8 @@
         <div class="organization-filters__controls">
             <div class="field">
                 <label for="searchTerm">Search</label>
-                <input id="searchTerm" type="text" [(ngModel)]="searchTerm" placeholder="Name or mission statement">
+                <input id="searchTerm" type="text" [(ngModel)]="searchTerm" placeholder="Name or mission statement"
+                    (keyup.enter)="applyFilters()">
             </div>
             <div class="field field--checkbox">
                 <label class="form-check">
@@ -105,8 +106,23 @@
                                 provided</span></ng-template>
                     </div>
                     <div class="text-end">
-                        <a [routerLink]="['/events']" [queryParams]="{organizationId: org.organizationId}"
-                            class="btn btn-sm btn-outline-success">View Events</a>
+                        <div class="organization-table__actions">
+                            <a [routerLink]="['/events']" [queryParams]="{organizationId: org.organizationId}"
+                                class="btn btn-sm btn-outline-success">
+                                <i class="bi bi-calendar-event me-1"></i>View Events
+                            </a>
+                            <button *ngIf="isLoggedIn" (click)="toggleFollowOrganization(org.organizationId!)"
+                                [disabled]="togglingFollow.has(org.organizationId!) || checkingFollow.has(org.organizationId!)"
+                                class="btn btn-sm"
+                                [ngClass]="isFollowingOrganization(org.organizationId!) ? 'btn-success' : 'btn-outline-success'">
+                                <i class="bi me-1"
+                                    [ngClass]="isFollowingOrganization(org.organizationId!) ? 'bi-heart-fill' : 'bi-heart'"></i>
+                                <span *ngIf="togglingFollow.has(org.organizationId!)">...</span>
+                                <span *ngIf="!togglingFollow.has(org.organizationId!)">
+                                    {{ isFollowingOrganization(org.organizationId!) ? 'Following' : 'Follow' }}
+                                </span>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

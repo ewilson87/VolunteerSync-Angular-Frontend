@@ -57,6 +57,33 @@
     margin: 0;
 }
 
+.event-hero__tags {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 1rem 0;
+    padding: 0.75rem 0;
+}
+
+.event-hero__tags i {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+}
+
+.event-hero__tag {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.4rem 0.85rem;
+    background: rgba(255, 255, 255, 0.2);
+    color: #ffffff;
+    border-radius: 20px;
+    font-size: 0.85rem;
+    font-weight: 500;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
 .event-hero__meta {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

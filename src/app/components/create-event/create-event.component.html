@@ -48,13 +48,103 @@
                     </div>
                     <div class="create-event-field">
                         <label for="eventTime">Event Time *</label>
-                        <input type="time" id="eventTime" name="eventTime" [(ngModel)]="event.eventTime" required [disabled]="!canCreateEvents">
+                        <div class="create-event-time-picker">
+                            <select id="eventHour" name="eventHour" [(ngModel)]="eventHour" (ngModelChange)="updateEventTime()" required [disabled]="!canCreateEvents" class="create-event-time-select">
+                                <option *ngFor="let hour of availableHours" [ngValue]="hour">{{ hour }}</option>
+                            </select>
+                            <span class="create-event-time-separator">:</span>
+                            <select id="eventMinute" name="eventMinute" [(ngModel)]="eventMinute" (ngModelChange)="updateEventTime()" required [disabled]="!canCreateEvents" class="create-event-time-select">
+                                <option *ngFor="let minute of availableMinutes" [ngValue]="minute">{{ minute.toString().padStart(2, '0') }}</option>
+                            </select>
+                            <select id="eventAmPm" name="eventAmPm" [(ngModel)]="eventAmPm" (ngModelChange)="updateEventTime()" required [disabled]="!canCreateEvents" class="create-event-time-select create-event-time-ampm">
+                                <option value="AM">AM</option>
+                                <option value="PM">PM</option>
+                            </select>
+                        </div>
+                        <input type="hidden" name="eventTime" [(ngModel)]="event.eventTime" required>
+                    </div>
+                    <div class="create-event-field">
+                        <label for="eventLengthHours">Event Length (Hours) *</label>
+                        <input type="number" id="eventLengthHours" name="eventLengthHours" min="1" max="24" [(ngModel)]="event.eventLengthHours" required [disabled]="!canCreateEvents">
                     </div>
                     <div class="create-event-field">
                         <label for="numNeeded">Volunteers Needed *</label>
                         <input type="number" id="numNeeded" name="numNeeded" min="1" max="10000" [(ngModel)]="event.numNeeded" required [disabled]="!canCreateEvents">
                     </div>
                 </div>
+            </div>
+
+            <div class="create-event-section">
+                <h3>Tags &amp; Attributes</h3>
+                <p class="create-event-form__subtitle">
+                    Highlight key details like "Kid-friendly", "Light labor", or "Outdoors" so volunteers can quickly
+                    find events that fit their interests and abilities.
+                </p>
+
+                <div *ngIf="tagsError" class="create-event-alert create-event-alert--error mb-2">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ tagsError }}
+                </div>
+
+                <div class="create-event-tags-wrapper" *ngIf="availableTags.length > 0; else noTagsAvailable">
+                    <!-- Selected Tags Display -->
+                    <div class="create-event-tags-selected" *ngIf="selectedTags.length > 0">
+                        <label class="create-event-tags-label">Selected Tags:</label>
+                        <div class="create-event-tags-badges">
+                            <span class="create-event-tag-badge" *ngFor="let tag of selectedTags">
+                                {{ tag.name }}
+                                <button type="button" class="create-event-tag-remove" 
+                                    (click)="removeTag(tag.tagId)" 
+                                    [disabled]="!canCreateEvents"
+                                    [attr.aria-label]="'Remove ' + tag.name">
+                                    <i class="bi bi-x"></i>
+                                </button>
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Multi-Select Dropdown -->
+                    <div class="create-event-tags-dropdown-wrapper">
+                        <button type="button" 
+                            class="create-event-tags-dropdown-toggle"
+                            (click)="tagsDropdownOpen = !tagsDropdownOpen"
+                            [disabled]="!canCreateEvents || tagsLoading"
+                            [class.loading]="tagsLoading">
+                            <i class="bi bi-tags"></i>
+                            <span>{{ selectedTags.length > 0 ? selectedTags.length + ' tag' + (selectedTags.length !== 1 ? 's' : '') + ' selected' : 'Select tags...' }}</span>
+                            <i class="bi" [ngClass]="tagsDropdownOpen ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                        </button>
+
+                        <div class="create-event-tags-dropdown" *ngIf="tagsDropdownOpen" (click)="$event.stopPropagation()">
+                            <div class="create-event-tags-search">
+                                <i class="bi bi-search"></i>
+                                <input type="text" 
+                                    placeholder="Search tags..." 
+                                    [(ngModel)]="tagSearchQuery"
+                                    name="tagSearchQuery"
+                                    (click)="$event.stopPropagation()">
+                            </div>
+                            <div class="create-event-tags-list">
+                                <div *ngIf="filteredTags.length === 0" class="create-event-tags-empty">
+                                    No tags found matching "{{ tagSearchQuery }}"
+                                </div>
+                                <label class="create-event-tags-option" 
+                                    *ngFor="let tag of filteredTags"
+                                    (click)="toggleTag(tag.tagId)">
+                                    <input type="checkbox" 
+                                        [checked]="selectedTagIds.includes(tag.tagId)"
+                                        (change)="$event.stopPropagation()"
+                                        readonly>
+                                    <span>{{ tag.name }}</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <ng-template #noTagsAvailable>
+                    <p class="text-muted mb-0">No tags are currently configured. You can still create this event; tags
+                        can be added later once they are available.</p>
+                </ng-template>
             </div>
 
             <div class="create-event-section">

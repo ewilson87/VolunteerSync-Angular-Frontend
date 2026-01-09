@@ -1,0 +1,97 @@
+<div class="knowledge-base-page">
+    <section class="kb-hero card shadow-sm">
+        <div class="kb-hero__content">
+            <h1>Knowledge Base & FAQ</h1>
+            <p>Find answers to common questions and learn how to make the most of VolunteerSync.</p>
+        </div>
+        <div class="kb-hero__visual">
+            <div class="kb-hero__orb"></div>
+            <div class="kb-hero__icon"><i class="bi bi-journal-text"></i></div>
+        </div>
+    </section>
+
+    <section class="kb-search card shadow-sm">
+        <div class="kb-search__wrapper">
+            <i class="bi bi-search kb-search__icon"></i>
+            <input 
+                type="text" 
+                class="kb-search__input" 
+                placeholder="Search for answers..."
+                [(ngModel)]="searchQuery"
+            />
+            <button 
+                *ngIf="searchQuery || selectedCategory" 
+                class="kb-search__clear"
+                (click)="clearFilters()"
+                type="button"
+                aria-label="Clear filters"
+            >
+                <i class="bi bi-x-lg"></i>
+            </button>
+        </div>
+        <div class="kb-search__filters">
+            <button 
+                *ngFor="let category of categories"
+                class="kb-filter-btn"
+                [class.kb-filter-btn--active]="selectedCategory === category.title"
+                (click)="selectCategory(category.title)"
+                type="button"
+            >
+                <i [class]="category.icon"></i>
+                <span>{{ category.title }}</span>
+            </button>
+        </div>
+    </section>
+
+    <div *ngIf="searchQuery || selectedCategory" class="kb-results-header">
+        <p>
+            <strong>{{ totalResultsCount }}</strong> 
+            result{{ totalResultsCount !== 1 ? 's' : '' }} found
+            <span *ngIf="selectedCategory">in <strong>{{ selectedCategory }}</strong></span>
+        </p>
+    </div>
+
+    <div class="kb-content">
+        <div *ngFor="let category of filteredCategories" class="kb-category card shadow-sm">
+            <div class="kb-category__header">
+                <i [class]="category.icon"></i>
+                <h2>{{ category.title }}</h2>
+            </div>
+            <div class="kb-category__faqs">
+                <details *ngFor="let faq of category.faqs" class="kb-faq">
+                    <summary>
+                        <span>{{ faq.question }}</span>
+                    </summary>
+                    <div class="kb-faq__answer">
+                        <p>{{ faq.answer }}</p>
+                    </div>
+                </details>
+            </div>
+        </div>
+
+        <div *ngIf="filteredCategories.length === 0" class="kb-no-results card shadow-sm">
+            <div class="kb-no-results__icon">
+                <i class="bi bi-search"></i>
+            </div>
+            <h3>No results found</h3>
+            <p>Try adjusting your search terms or selecting a different category.</p>
+            <button class="btn btn-success" (click)="clearFilters()" type="button">
+                Clear Filters
+            </button>
+        </div>
+    </div>
+
+    <section class="kb-help card shadow-sm">
+        <div class="kb-help__content">
+            <h2>Still need help?</h2>
+            <p>Can't find what you're looking for? Our support team is here to help.</p>
+            <div class="kb-help__actions">
+                <a routerLink="/support" class="btn btn-success btn-lg">
+                    <i class="bi bi-envelope-paper"></i>
+                    Contact Support
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+

@@ -32,7 +32,7 @@ export class LoginComponent {
 
     /**
      * Handles user login submission.
-     * Validates credentials, authenticates user, stores JWT token, and redirects based on user role.
+     * Validates credentials, authenticates user, stores JWT token, and redirects to home page (or returnUrl if provided).
      */
     onLogin(): void {
         if (!this.email || !this.password) {
@@ -57,16 +57,10 @@ export class LoginComponent {
                 this.authService.setToken(token);
                 this.authService.setCurrentUser(user);
 
+                // If no specific returnUrl or it's home/login, redirect to home page
                 let redirectUrl = this.returnUrl;
-                
                 if (this.returnUrl === '/' || this.returnUrl === '/login') {
-                    if (user.role === 'admin') {
-                        redirectUrl = '/admin';
-                    } else if (user.role === 'organizer') {
-                        redirectUrl = '/organizer';
-                    } else {
-                        redirectUrl = '/events';
-                    }
+                    redirectUrl = '/';
                 }
 
                 this.router.navigateByUrl(redirectUrl);

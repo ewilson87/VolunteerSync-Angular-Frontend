@@ -64,7 +64,7 @@
         </div>
 
         <!-- Create/Edit Event Form -->
-        <div class="card mb-4">
+        <div id="event-form-card" class="card mb-4">
             <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
                 <h5 class="mb-0">{{ isEditMode ? 'Edit Event' : 'Create New Event' }}</h5>
                 <button *ngIf="!isEditMode" class="btn btn-light btn-sm" (click)="onCreateEvent()">
@@ -173,6 +173,81 @@
                         </div>
                     </div>
 
+                    <!-- Tags & Attributes Section - Always Visible -->
+                    <div class="mb-3" style="min-height: 100px;">
+                        <label class="form-label"><strong>Tags &amp; Attributes</strong></label>
+                        <p class="text-muted mb-2">
+                            Select tags that describe this event (for example, "Kid-friendly", "Outdoors", or "Light labor").
+                        </p>
+                        
+                        <!-- Loading State -->
+                        <div *ngIf="tagsLoading" class="text-center py-3">
+                            <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                <span class="visually-hidden">Loading tags...</span>
+                            </div>
+                            <p class="text-muted mt-2 mb-0">Loading tags...</p>
+                        </div>
+                        
+                        <!-- Tags Available -->
+                        <div *ngIf="!tagsLoading && availableTags.length > 0" class="event-mgmt-tags-wrapper">
+                            <!-- Selected Tags Display -->
+                            <div class="event-mgmt-tags-selected" *ngIf="selectedTags.length > 0">
+                                <label class="event-mgmt-tags-label">Selected Tags:</label>
+                                <div class="event-mgmt-tags-badges">
+                                    <span class="event-mgmt-tag-badge" *ngFor="let tag of selectedTags">
+                                        {{ tag.name }}
+                                        <button type="button" class="event-mgmt-tag-remove" 
+                                            (click)="removeTag(tag.tagId)"
+                                            [attr.aria-label]="'Remove ' + tag.name">
+                                            <i class="bi bi-x"></i>
+                                        </button>
+                                    </span>
+                                </div>
+                            </div>
+
+                            <!-- Multi-Select Dropdown -->
+                            <div class="event-mgmt-tags-dropdown-wrapper">
+                                <button type="button" 
+                                    class="event-mgmt-tags-dropdown-toggle"
+                                    (click)="tagsDropdownOpen = !tagsDropdownOpen">
+                                    <i class="bi bi-tags"></i>
+                                    <span>{{ selectedTags.length > 0 ? selectedTags.length + ' tag' + (selectedTags.length !== 1 ? 's' : '') + ' selected' : 'Select tags...' }}</span>
+                                    <i class="bi" [ngClass]="tagsDropdownOpen ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                </button>
+
+                                <div class="event-mgmt-tags-dropdown" *ngIf="tagsDropdownOpen" (click)="$event.stopPropagation()">
+                                    <div class="event-mgmt-tags-search">
+                                        <i class="bi bi-search"></i>
+                                        <input type="text" 
+                                            placeholder="Search tags..." 
+                                            [(ngModel)]="tagSearchQuery"
+                                            (click)="$event.stopPropagation()">
+                                    </div>
+                                    <div class="event-mgmt-tags-list">
+                                        <div *ngIf="filteredTags.length === 0" class="event-mgmt-tags-empty">
+                                            No tags found matching "{{ tagSearchQuery }}"
+                                        </div>
+                                        <label class="event-mgmt-tags-option" 
+                                            *ngFor="let tag of filteredTags"
+                                            (click)="toggleTag(tag.tagId)">
+                                            <input type="checkbox" 
+                                                [checked]="selectedTagIds.includes(tag.tagId)"
+                                                (change)="$event.stopPropagation()"
+                                                readonly>
+                                            <span>{{ tag.name }}</span>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- No Tags Available - Show message but keep section visible -->
+                        <div *ngIf="!tagsLoading && availableTags.length === 0" class="alert alert-info">
+                            <i class="bi bi-info-circle me-2"></i>
+                            <strong>No tags available.</strong> Tags can be added later once they are configured in the system.
+                        </div>
+                    </div>
+
                     <div class="d-flex justify-content-end gap-2 mt-3">
                         <button type="button" class="btn btn-secondary" (click)="cancelForm()">Cancel</button>
                         <button type="submit" class="btn btn-primary">{{ isEditMode ? 'Update Event' : 'Create Event'
@@ -203,7 +278,7 @@
                         <tbody>
                             <tr *ngFor="let event of events" [class.table-secondary]="isEventInPast(event)">
                                 <td>{{ event.title }}</td>
-                                <td>{{ event.eventDate }} {{ event.eventTime }}</td>
+                                <td>{{ event.eventDate }} {{ formatTime12Hour(event.eventTime) }}</td>
                                 <td>{{ event.city }}, {{ event.state }}</td>
                                 <td>
                                     <span *ngIf="event.numSignedUp !== undefined">{{ event.numSignedUp }} / {{

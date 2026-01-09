@@ -21,7 +21,7 @@
                 </div>
             </div>
             <div class="admin-hero__image">
-                <img src="assets/VS_Logo_Banner.png" alt="VolunteerSync banner">
+                <img src="assets/VS_Logo_Square.png" alt="VolunteerSync banner">
             </div>
         </section>
 
@@ -36,16 +36,41 @@
 
         <section class="admin-tabs">
             <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'users'"
-                (click)="activeTab = 'users'">
+                (click)="switchTab('users')">
                 Users ({{ totalUsers }})
             </button>
             <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'organizations'"
-                (click)="activeTab = 'organizations'">
+                (click)="switchTab('organizations')">
                 Organizations ({{ totalOrganizations }})
             </button>
             <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'events'"
-                (click)="activeTab = 'events'">
+                (click)="switchTab('events')">
                 Events ({{ totalEvents }})
+            </button>
+            <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'support'"
+                (click)="switchTab('support')">
+                Support Messages ({{ unresolvedSupportMessagesCount }})
+            </button>
+            <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'audit'"
+                (click)="switchTab('audit')">
+                Audit Log
+            </button>
+            <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'metrics'"
+                (click)="switchTab('metrics')">
+                Metrics
+            </button>
+            <button type="button" class="admin-tabs__button" [class.active]="activeTab === 'tags'"
+                (click)="switchTab('tags')">
+                Tags ({{ tags.length }})
+            </button>
+            <button type="button" class="admin-tabs__action-button" 
+                (click)="processPendingEmails()" 
+                [disabled]="isProcessingEmails"
+                title="Manually trigger processing of pending email notifications">
+                <i class="bi bi-envelope-check me-2" *ngIf="!isProcessingEmails"></i>
+                <span class="spinner-border spinner-border-sm me-2" *ngIf="isProcessingEmails" role="status" aria-hidden="true"></span>
+                <span *ngIf="isProcessingEmails">Processing...</span>
+                <span *ngIf="!isProcessingEmails">Process Pending Email Notifications</span>
             </button>
         </section>
 
@@ -113,8 +138,14 @@
                             </td>
                             <td>{{ user.organizationId ? getOrganizationName(user.organizationId) : '—' }}</td>
                             <td class="admin-table__actions">
-                                <button class="btn btn-outline-danger btn-sm" (click)="confirmDeleteUser(user)"><i
-                                        class="bi bi-trash"></i></button>
+                                <button class="btn btn-outline-primary btn-sm me-2" (click)="openEditRoleModal(user)"
+                                    title="Edit Role">
+                                    <i class="bi bi-person-gear"></i>
+                                </button>
+                                <button *ngIf="!isCurrentUser(user)" class="btn btn-outline-danger btn-sm"
+                                    (click)="confirmDeleteUser(user)" title="Delete User">
+                                    <i class="bi bi-trash"></i>
+                                </button>
                             </td>
                         </tr>
                     </tbody>
@@ -213,40 +244,37 @@
                             <td class="admin-table__actions">
                                 <div class="admin-table__actions-inner">
                                     <div class="dropdown" [attr.id]="'orgDropdown' + org.organizationId">
-                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" 
-                                            type="button" 
-                                            [id]="'orgDropdownBtn' + org.organizationId"
-                                            data-bs-toggle="dropdown" 
-                                            aria-expanded="false"
-                                            title="Actions">
+                                        <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
+                                            [id]="'orgDropdownBtn' + org.organizationId" data-bs-toggle="dropdown"
+                                            aria-expanded="false" title="Actions">
                                             <i class="bi bi-three-dots-vertical"></i>
                                         </button>
-                                        <ul class="dropdown-menu" [attr.aria-labelledby]="'orgDropdownBtn' + org.organizationId">
+                                        <ul class="dropdown-menu"
+                                            [attr.aria-labelledby]="'orgDropdownBtn' + org.organizationId">
                                             <li *ngIf="org.approvalStatus !== 'approved'">
-                                                <a class="dropdown-item" 
-                                                    href="javascript:void(0)"
+                                                <a class="dropdown-item" href="javascript:void(0)"
                                                     (click)="approveOrganization(org); $event.preventDefault()">
                                                     <i class="bi bi-check-circle text-success me-2"></i>Approve
                                                 </a>
                                             </li>
                                             <li *ngIf="org.approvalStatus !== 'rejected'">
-                                                <a class="dropdown-item" 
-                                                    href="javascript:void(0)"
+                                                <a class="dropdown-item" href="javascript:void(0)"
                                                     (click)="showRejectModal(org); $event.preventDefault()">
                                                     <i class="bi bi-x-circle text-warning me-2"></i>Reject
                                                 </a>
                                             </li>
                                             <li *ngIf="org.approvalStatus !== 'pending'">
-                                                <a class="dropdown-item" 
-                                                    href="javascript:void(0)"
+                                                <a class="dropdown-item" href="javascript:void(0)"
                                                     (click)="setOrganizationToPending(org); $event.preventDefault()">
-                                                    <i class="bi bi-clock-history text-secondary me-2"></i>Set to Pending
+                                                    <i class="bi bi-clock-history text-secondary me-2"></i>Set to
+                                                    Pending
                                                 </a>
                                             </li>
-                                            <li><hr class="dropdown-divider"></li>
                                             <li>
-                                                <a class="dropdown-item text-danger" 
-                                                    href="javascript:void(0)"
+                                                <hr class="dropdown-divider">
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item text-danger" href="javascript:void(0)"
                                                     (click)="confirmDeleteOrganization(org); $event.preventDefault()">
                                                     <i class="bi bi-trash me-2"></i>Delete
                                                 </a>
@@ -380,15 +408,571 @@
             </ng-template>
         </section>
 
+        <section class="admin-card card shadow-sm" *ngIf="activeTab === 'support'">
+            <div class="admin-card__header">
+                <div>
+                    <h2>Support Messages</h2>
+                    <p>Review and respond to user support inquiries.</p>
+                </div>
+                <div class="admin-filters">
+                    <div class="admin-filter">
+                        <label for="supportSearch">Search</label>
+                        <input id="supportSearch" type="text" [(ngModel)]="supportMessageSearchTerm"
+                            (ngModelChange)="applySupportMessageFilters()"
+                            placeholder="Subject, name, email, or message">
+                    </div>
+                    <div class="admin-filter">
+                        <label for="supportStatus">Status</label>
+                        <select id="supportStatus" [(ngModel)]="supportMessageStatusFilter"
+                            (ngModelChange)="applySupportMessageFilters()">
+                            <option value="all">All</option>
+                            <option value="unresolved">Unresolved</option>
+                            <option value="resolved">Resolved</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <div class="admin-table" *ngIf="filteredSupportMessages.length > 0; else emptySupportMessages">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setSupportMessageSort('date')">
+                                    Date <i class="bi" [ngClass]="getSupportMessageSortIcon('date')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setSupportMessageSort('name')">
+                                    Name <i class="bi" [ngClass]="getSupportMessageSortIcon('name')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setSupportMessageSort('subject')">
+                                    Subject <i class="bi" [ngClass]="getSupportMessageSortIcon('subject')"></i>
+                                </button>
+                            </th>
+                            <th>Email</th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setSupportMessageSort('status')">
+                                    Status <i class="bi" [ngClass]="getSupportMessageSortIcon('status')"></i>
+                                </button>
+                            </th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let message of paginatedSupportMessages">
+                            <td>{{ formatSupportMessageDate(message.createdAt || message.submittedAt) }}</td>
+                            <td>{{ message.name }}</td>
+                            <td>{{ message.subject }}</td>
+                            <td>{{ message.email }}</td>
+                            <td>
+                                <span class="badge"
+                                    [ngClass]="(message.isResolved === 1 || message.isResolved === true) ? 'bg-success' : 'bg-warning text-dark'">
+                                    {{ (message.isResolved === 1 || message.isResolved === true) ? 'Resolved' :
+                                    'Unresolved' }}
+                                </span>
+                            </td>
+                            <td class="admin-table__actions">
+                                <div class="admin-table__actions-inner">
+                                    <button class="btn btn-outline-info btn-sm me-1" (click)="showRespondModal(message)"
+                                        [title]="(message.isResolved === 1 || message.isResolved === true) ? 'View Response' : 'Respond'">
+                                        <i class="bi"
+                                            [ngClass]="(message.isResolved === 1 || message.isResolved === true) ? 'bi-eye' : 'bi-reply'"></i>
+                                    </button>
+                                    <button *ngIf="!(message.isResolved === 1 || message.isResolved === true)"
+                                        class="btn btn-outline-success btn-sm me-1"
+                                        (click)="markSupportMessageResolved(message)" title="Mark as Resolved">
+                                        <i class="bi bi-check-circle"></i>
+                                    </button>
+                                    <button class="btn btn-outline-danger btn-sm"
+                                        (click)="confirmDeleteSupportMessage(message)" title="Delete">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="admin-pagination">
+                    <div class="admin-pagination__size">
+                        <label for="supportPageSize">Show</label>
+                        <select id="supportPageSize" [(ngModel)]="supportMessagePageSize"
+                            (ngModelChange)="changeSupportMessagePageSize($event)">
+                            <option *ngFor="let size of supportMessagePageSizeOptions" [value]="size">{{ size }}
+                            </option>
+                        </select>
+                        <span>per page</span>
+                    </div>
+                    <div class="admin-pagination__controls">
+                        <button class="btn btn-outline-success btn-sm"
+                            (click)="goToSupportMessagePage(supportMessageCurrentPage - 1)"
+                            [disabled]="supportMessageCurrentPage === 1">Prev</button>
+                        <button *ngFor="let page of supportMessagePageNumbers"
+                            class="btn btn-sm admin-pagination__button"
+                            [ngClass]="{'btn-success text-white': page === supportMessageCurrentPage, 'btn-outline-success': page !== supportMessageCurrentPage}"
+                            (click)="goToSupportMessagePage(page)">{{ page }}</button>
+                        <button class="btn btn-outline-success btn-sm"
+                            (click)="goToSupportMessagePage(supportMessageCurrentPage + 1)"
+                            [disabled]="supportMessageCurrentPage === supportMessageTotalPages">Next</button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptySupportMessages>
+                <div class="admin-alert admin-alert--muted">
+                    No support messages found.
+                </div>
+            </ng-template>
+        </section>
+
+        <!-- Admin Metrics Section -->
+        <section *ngIf="activeTab === 'metrics'" class="admin-section">
+            <div class="admin-section__header">
+                <h2>Platform Metrics</h2>
+                <p class="admin-section__subtitle">View comprehensive platform statistics and usage trends</p>
+            </div>
+
+            <div *ngIf="adminMetricsError" class="admin-alert admin-alert--error">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ adminMetricsError }}
+            </div>
+
+            <div *ngIf="loadingAdminMetrics" class="admin-loading">
+                <div class="spinner-border text-success" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>Loading metrics…</p>
+            </div>
+
+            <div *ngIf="!loadingAdminMetrics && adminMetrics" class="admin-metrics">
+                <!-- Summary Cards -->
+                <div class="admin-metrics__summary">
+                    <div class="admin-metrics__card">
+                        <div class="admin-metrics__card-icon">
+                            <i class="bi bi-people"></i>
+                        </div>
+                        <div class="admin-metrics__card-content">
+                            <h3>{{ (adminMetrics.userCounts?.volunteers ?? 0) + (adminMetrics.userCounts?.organizers ??
+                                0) +
+                                (adminMetrics.userCounts?.admins ?? 0) }}</h3>
+                            <p>Total Users</p>
+                            <small>Volunteers: {{ adminMetrics.userCounts?.volunteers ?? 0 }} | Organizers: {{
+                                adminMetrics.userCounts?.organizers ?? 0 }} | Admins: {{ adminMetrics.userCounts?.admins
+                                ?? 0
+                                }}</small>
+                        </div>
+                    </div>
+                    <div class="admin-metrics__card">
+                        <div class="admin-metrics__card-icon">
+                            <i class="bi bi-building"></i>
+                        </div>
+                        <div class="admin-metrics__card-content">
+                            <h3>{{ adminMetrics.organizationCounts?.total ?? 0 }}</h3>
+                            <p>Total Organizations</p>
+                            <small>{{ adminMetrics.organizationCounts?.pending ?? 0 }} Pending Approval</small>
+                        </div>
+                    </div>
+                    <div class="admin-metrics__card">
+                        <div class="admin-metrics__card-icon">
+                            <i class="bi bi-calendar-event"></i>
+                        </div>
+                        <div class="admin-metrics__card-content">
+                            <h3>{{ adminMetrics.eventCounts?.total ?? 0 }}</h3>
+                            <p>Total Events</p>
+                            <small>{{ adminMetrics.eventCounts?.completed ?? 0 }} Completed</small>
+                        </div>
+                    </div>
+                    <div class="admin-metrics__card">
+                        <div class="admin-metrics__card-icon">
+                            <i class="bi bi-clock-history"></i>
+                        </div>
+                        <div class="admin-metrics__card-content">
+                            <h3>{{ adminMetrics.totalVolunteerHours }}</h3>
+                            <p>Total Volunteer Hours</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Additional Stats -->
+                <div class="admin-metrics__stats">
+                    <div class="admin-metrics__stat-item">
+                        <span class="admin-metrics__stat-label">New Users (Last 30 Days):</span>
+                        <span class="admin-metrics__stat-value">{{ adminMetrics.newUsersLast30Days }}</span>
+                    </div>
+                    <div class="admin-metrics__stat-item">
+                        <span class="admin-metrics__stat-label">New Organizations (Last 30 Days):</span>
+                        <span class="admin-metrics__stat-value">{{ adminMetrics.newOrganizationsLast30Days }}</span>
+                    </div>
+                </div>
+
+                <!-- Active Users Stats -->
+                <div class="admin-metrics__active-users">
+                    <h3>Active Users</h3>
+                    <div class="admin-metrics__active-users-grid">
+                        <div class="admin-metrics__active-user-card">
+                            <div class="admin-metrics__active-user-label">Last 7 Days</div>
+                            <div class="admin-metrics__active-user-value">{{ adminMetrics.activeUsersLast7Days ?? 0 }}
+                            </div>
+                            <div class="admin-metrics__active-user-percentage">
+                                {{ getActiveUserPercentage(7).toFixed(1) }}% of total users
+                            </div>
+                        </div>
+                        <div class="admin-metrics__active-user-card">
+                            <div class="admin-metrics__active-user-label">Last 30 Days</div>
+                            <div class="admin-metrics__active-user-value">{{ adminMetrics.activeUsersLast30Days ?? 0 }}
+                            </div>
+                            <div class="admin-metrics__active-user-percentage">
+                                {{ getActiveUserPercentage(30).toFixed(1) }}% of total users
+                            </div>
+                        </div>
+                        <div class="admin-metrics__active-user-card">
+                            <div class="admin-metrics__active-user-label">Last 90 Days</div>
+                            <div class="admin-metrics__active-user-value">{{ adminMetrics.activeUsersLast90Days ?? 0 }}
+                            </div>
+                            <div class="admin-metrics__active-user-percentage">
+                                {{ getActiveUserPercentage(90).toFixed(1) }}% of total users
+                            </div>
+                        </div>
+                        <div class="admin-metrics__active-user-card">
+                            <div class="admin-metrics__active-user-label">Last Year</div>
+                            <div class="admin-metrics__active-user-value">{{ adminMetrics.activeUsersLast365Days ?? 0 }}
+                            </div>
+                            <div class="admin-metrics__active-user-percentage">
+                                {{ getActiveUserPercentage(365).toFixed(1) }}% of total users
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Export Buttons -->
+                <div class="admin-metrics__export">
+                    <button class="btn btn-success btn-sm" (click)="downloadAdminMetricsAsPDF()">
+                        <i class="bi bi-file-pdf me-1"></i>Download PDF
+                    </button>
+                    <button class="btn btn-success btn-sm" (click)="downloadAdminMetricsAsExcel()">
+                        <i class="bi bi-file-excel me-1"></i>Download Excel
+                    </button>
+                </div>
+
+                <!-- Chart Controls -->
+                <div class="admin-metrics__controls">
+                    <div class="admin-metrics__control-group">
+                        <label>Chart Type:</label>
+                        <select [(ngModel)]="selectedAdminChartType" (ngModelChange)="onAdminChartTypeChange()"
+                            class="form-select form-select-sm">
+                            <option value="bar">Bar Chart</option>
+                            <option value="line">Line Chart</option>
+                            <option value="pie">Pie Chart</option>
+                        </select>
+                    </div>
+                    <div class="admin-metrics__control-group" *ngIf="selectedAdminChartType !== 'pie'">
+                        <label>Metric:</label>
+                        <select [(ngModel)]="selectedAdminMetricChart" (ngModelChange)="onAdminChartTypeChange()"
+                            class="form-select form-select-sm">
+                            <option value="users">New Users</option>
+                            <option value="orgs">New Organizations</option>
+                            <option value="events">New Events</option>
+                            <option value="hours">Volunteer Hours</option>
+                            <option value="activeUsers">Active Users</option>
+                        </select>
+                    </div>
+                    <div class="admin-metrics__control-group">
+                        <label>Date Range:</label>
+                        <select [(ngModel)]="adminDateRangePreset" (ngModelChange)="onAdminChartTypeChange()"
+                            class="form-select form-select-sm">
+                            <option value="all">All Time</option>
+                            <option value="last3">Last 3 Months</option>
+                            <option value="last6">Last 6 Months</option>
+                            <option value="last12">Last 12 Months</option>
+                            <option value="custom">Custom Range</option>
+                        </select>
+                    </div>
+                    <div class="admin-metrics__control-group" *ngIf="adminDateRangePreset === 'custom'">
+                        <label>Start Month:</label>
+                        <input type="month" [(ngModel)]="adminCustomStartMonth"
+                            (ngModelChange)="onAdminChartTypeChange()" class="form-control form-control-sm">
+                    </div>
+                    <div class="admin-metrics__control-group" *ngIf="adminDateRangePreset === 'custom'">
+                        <label>End Month:</label>
+                        <input type="month" [(ngModel)]="adminCustomEndMonth" (ngModelChange)="onAdminChartTypeChange()"
+                            class="form-control form-control-sm">
+                    </div>
+                </div>
+
+                <!-- Charts -->
+                <div class="admin-metrics__charts">
+                    <!-- User Counts Pie Chart -->
+                    <div class="admin-metrics__chart" *ngIf="selectedAdminChartType === 'pie'">
+                        <h3>Users by Role</h3>
+                        <div class="chart-container">
+                            <canvas baseChart data-chart-type="pie" [data]="getUserCountsChartData()" [type]="'pie'"
+                                [options]="getAdminPieChartOptions()">
+                            </canvas>
+                        </div>
+                    </div>
+
+                    <!-- Monthly Usage Chart -->
+                    <div class="admin-metrics__chart"
+                        *ngIf="selectedAdminChartType !== 'pie' && selectedAdminMetricChart !== 'activeUsers'">
+                        <h3>Monthly {{ selectedAdminMetricChart === 'users' ? 'New Users' : selectedAdminMetricChart ===
+                            'orgs' ? 'New Organizations' : selectedAdminMetricChart === 'events' ? 'New Events' :
+                            'Volunteer Hours' }}</h3>
+                        <div class="chart-container"
+                            *ngIf="adminMetrics && adminMetrics.usageByMonth && adminMetrics.usageByMonth.length > 0">
+                            <canvas *ngIf="selectedAdminChartType === 'bar'" baseChart
+                                [data]="getMonthlyUsageChartData()" type="bar" [options]="getAdminBarLineChartOptions()"
+                                [legend]="true">
+                            </canvas>
+                            <canvas *ngIf="selectedAdminChartType === 'line'" baseChart
+                                [data]="getMonthlyUsageChartData()" type="line"
+                                [options]="getAdminBarLineChartOptions()" [legend]="true">
+                            </canvas>
+                        </div>
+                        <div *ngIf="!adminMetrics || !adminMetrics.usageByMonth || adminMetrics.usageByMonth.length === 0"
+                            class="admin-alert admin-alert--muted">
+                            <p>No monthly usage data available yet.</p>
+                        </div>
+                    </div>
+
+                    <!-- Active Users Chart -->
+                    <div class="admin-metrics__chart"
+                        *ngIf="selectedAdminChartType !== 'pie' && selectedAdminMetricChart === 'activeUsers'">
+                        <h3>Active Users by Timeframe</h3>
+                        <div class="chart-container" *ngIf="adminMetrics">
+                            <canvas *ngIf="selectedAdminChartType === 'bar'" baseChart
+                                [data]="getActiveUsersChartData()" type="bar" [options]="getAdminBarLineChartOptions()"
+                                [legend]="true">
+                            </canvas>
+                            <canvas *ngIf="selectedAdminChartType === 'line'" baseChart
+                                [data]="getActiveUsersChartData()" type="line" [options]="getAdminBarLineChartOptions()"
+                                [legend]="true">
+                            </canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Audit Log Section -->
+        <section *ngIf="activeTab === 'audit'" class="admin-section">
+            <div class="admin-section__header">
+                <h2>Audit Log</h2>
+                <p class="admin-section__subtitle">View system activity and track all changes made to the platform</p>
+            </div>
+            <div class="admin-filters">
+                <div class="admin-filters__row">
+                    <div class="admin-filter admin-filter--search">
+                        <label for="auditSearch">Search</label>
+                        <input type="text" id="auditSearch" [(ngModel)]="auditLogSearchTerm"
+                            (ngModelChange)="applyAuditLogFilters()" placeholder="Search logs...">
+                    </div>
+                    <div class="admin-filter">
+                        <label for="auditAction">Action</label>
+                        <select id="auditAction" [(ngModel)]="auditLogActionFilter"
+                            (ngModelChange)="applyAuditLogFilters()">
+                            <option value="all">All Actions</option>
+                            <option *ngFor="let action of commonActions" [value]="action">{{ action }}</option>
+                        </select>
+                    </div>
+                    <div class="admin-filter">
+                        <label for="auditEntityType">Entity Type</label>
+                        <select id="auditEntityType" [(ngModel)]="auditLogEntityTypeFilter"
+                            (ngModelChange)="applyAuditLogFilters()">
+                            <option value="all">All Types</option>
+                            <option *ngFor="let type of commonEntityTypes" [value]="type">{{ type }}</option>
+                        </select>
+                    </div>
+                    <div class="admin-filter">
+                        <label for="auditActor">Actor User ID</label>
+                        <input type="number" id="auditActor" [(ngModel)]="auditLogActorFilter"
+                            (ngModelChange)="applyAuditLogFilters()" placeholder="User ID">
+                    </div>
+                    <div class="admin-filter">
+                        <label for="auditEntityId">Entity ID</label>
+                        <input type="number" id="auditEntityId" [(ngModel)]="auditLogEntityIdFilter"
+                            (ngModelChange)="applyAuditLogFilters()" placeholder="Entity ID">
+                    </div>
+                </div>
+            </div>
+            <div class="admin-table" *ngIf="!loadingAuditLogs && filteredAuditLogs.length > 0; else emptyAuditLogs">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setAuditLogSort('date')">
+                                    Date/Time <i class="bi" [ngClass]="getAuditLogSortIcon('date')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setAuditLogSort('action')">
+                                    Action <i class="bi" [ngClass]="getAuditLogSortIcon('action')"></i>
+                                </button>
+                            </th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setAuditLogSort('entityType')">
+                                    Entity Type <i class="bi" [ngClass]="getAuditLogSortIcon('entityType')"></i>
+                                </button>
+                            </th>
+                            <th>Entity ID</th>
+                            <th>
+                                <button type="button" class="admin-sort" (click)="setAuditLogSort('actor')">
+                                    Actor <i class="bi" [ngClass]="getAuditLogSortIcon('actor')"></i>
+                                </button>
+                            </th>
+                            <th></th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let log of paginatedAuditLogs">
+                            <td>{{ formatAuditLogDate(log.occurredAt) }}</td>
+                            <td>
+                                <span [ngClass]="getActionBadgeClass(log.action)">{{ log.action }}</span>
+                            </td>
+                            <td>{{ log.entityType }}</td>
+                            <td>{{ log.entityId ?? 'N/A' }}</td>
+                            <td>{{ getActorName(log.actorUserId) }}</td>
+                            <td class="admin-table__actions">
+                                <button class="btn btn-outline-info btn-sm" (click)="showAuditLogDetails(log)"
+                                    title="View Details">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+                <div class="admin-pagination">
+                    <div class="admin-pagination__size">
+                        <label for="auditPageSize">Show</label>
+                        <select id="auditPageSize" [(ngModel)]="auditLogPageSize"
+                            (ngModelChange)="changeAuditLogPageSize($event)">
+                            <option *ngFor="let size of auditLogPageSizeOptions" [value]="size">{{ size }}</option>
+                        </select>
+                        <span>per page</span>
+                        <span *ngIf="auditLogPagination" class="ms-2 text-muted">
+                            (Total: {{ auditLogPagination.total }})
+                        </span>
+                    </div>
+                    <div class="admin-pagination__controls">
+                        <button class="btn btn-outline-success btn-sm"
+                            (click)="goToAuditLogPage(auditLogCurrentPage - 1)"
+                            [disabled]="auditLogCurrentPage === 1">Prev</button>
+                        <button *ngFor="let page of auditLogPageNumbers" class="btn btn-sm admin-pagination__button"
+                            [ngClass]="{'btn-success text-white': page === auditLogCurrentPage, 'btn-outline-success': page !== auditLogCurrentPage}"
+                            (click)="goToAuditLogPage(page)">{{ page }}</button>
+                        <button class="btn btn-outline-success btn-sm"
+                            (click)="goToAuditLogPage(auditLogCurrentPage + 1)"
+                            [disabled]="auditLogCurrentPage === auditLogTotalPages">Next</button>
+                    </div>
+                </div>
+            </div>
+            <ng-template #emptyAuditLogs>
+                <div class="admin-alert admin-alert--muted" *ngIf="!loadingAuditLogs">
+                    <p
+                        *ngIf="auditLogSearchTerm || auditLogActionFilter !== 'all' || auditLogEntityTypeFilter !== 'all' || auditLogActorFilter || auditLogEntityIdFilter">
+                        No audit logs match your filters.
+                    </p>
+                    <p
+                        *ngIf="!auditLogSearchTerm && auditLogActionFilter === 'all' && auditLogEntityTypeFilter === 'all' && !auditLogActorFilter && !auditLogEntityIdFilter">
+                        No audit logs found.
+                    </p>
+                </div>
+                <div *ngIf="loadingAuditLogs" class="admin-loading">
+                    <div class="spinner-border text-success" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <p>Loading audit logs...</p>
+                </div>
+            </ng-template>
+        </section>
+
         <!-- Delete confirmations -->
         <div *ngIf="showDeleteUserConfirmation && selectedUser" class="admin-modal">
             <div class="admin-modal__content">
                 <h3>Delete User</h3>
                 <p>Are you sure you want to remove <strong>{{ selectedUser.firstName }} {{ selectedUser.lastName
                         }}</strong>? This action cannot be undone.</p>
+
+                <div class="admin-modal__form">
+                    <div class="mb-3">
+                        <label for="deleteUserPassword" class="form-label">Admin Password *</label>
+                        <input type="password" id="deleteUserPassword" class="form-control"
+                            [(ngModel)]="deleteUserPassword" placeholder="Enter your admin password to confirm">
+                        <small class="form-text text-muted">Your password is required to delete a user.</small>
+                    </div>
+                </div>
+
                 <div class="admin-actions">
-                    <button class="btn btn-outline-secondary" (click)="cancelDeleteUser()">Cancel</button>
-                    <button class="btn btn-danger" (click)="deleteUser()">Delete User</button>
+                    <button class="btn btn-outline-secondary" (click)="cancelDeleteUser()"
+                        [disabled]="isDeletingUser">Cancel</button>
+                    <button class="btn btn-danger" (click)="deleteUser()"
+                        [disabled]="isDeletingUser || !deleteUserPassword.trim()">
+                        <span *ngIf="isDeletingUser" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        {{ isDeletingUser ? 'Deleting...' : 'Delete User' }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit User Role Modal -->
+        <div *ngIf="showEditRoleModal && editingUser" class="admin-modal">
+            <div class="admin-modal__content">
+                <h3>Edit User Role</h3>
+                <p>Editing role for <strong>{{ editingUser.firstName }} {{ editingUser.lastName }}</strong> ({{
+                    editingUser.email }})</p>
+
+                <!-- Warning: Only Organizer -->
+                <div *ngIf="showOnlyOrganizerWarning" class="admin-alert admin-alert--warning mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Warning:</strong> This user is the only organizer for their organization.
+                    Removing organizer access will leave the organization without any organizers.
+                </div>
+
+                <!-- Warning: Admin Role -->
+                <div *ngIf="showAdminRoleWarning" class="admin-alert admin-alert--warning mb-3">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <strong>Warning:</strong> You are granting administrator privileges.
+                    Administrators have full access to manage users, organizations, and events.
+                </div>
+
+                <div class="admin-modal__form">
+                    <div class="mb-3">
+                        <label for="newRole" class="form-label">New Role *</label>
+                        <select id="newRole" class="form-control" [(ngModel)]="newRole"
+                            (ngModelChange)="onRoleChange()">
+                            <option value="volunteer">Volunteer</option>
+                            <option value="organizer">Organizer</option>
+                            <option value="admin">Admin</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3" *ngIf="newRole === 'organizer'">
+                        <label for="selectedOrganization" class="form-label">Organization *</label>
+                        <select id="selectedOrganization" class="form-control" [(ngModel)]="selectedOrganizationId"
+                            (ngModelChange)="onOrganizationChange()">
+                            <option [value]="null">Select an organization...</option>
+                            <option *ngFor="let org of sortedOrganizations" [value]="org.organizationId">
+                                {{ org.name }}
+                            </option>
+                        </select>
+                        <small class="form-text text-muted">Multiple organizers can manage the same
+                            organization.</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="adminPassword" class="form-label">Admin Password *</label>
+                        <input type="password" id="adminPassword" class="form-control" [(ngModel)]="adminPassword"
+                            placeholder="Enter your admin password to confirm">
+                        <small class="form-text text-muted">Your password is required to make role changes.</small>
+                    </div>
+                </div>
+
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="closeEditRoleModal()"
+                        [disabled]="isUpdatingRole">Cancel</button>
+                    <button class="btn btn-primary" (click)="updateUserRole()"
+                        [disabled]="isUpdatingRole || !adminPassword.trim() || (newRole === 'organizer' && !selectedOrganizationId)">
+                        <span *ngIf="isUpdatingRole" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        {{ isUpdatingRole ? 'Updating...' : 'Update Role' }}
+                    </button>
                 </div>
             </div>
         </div>
@@ -408,21 +992,17 @@
         <div *ngIf="showRejectOrganizationModal && selectedOrganization" class="admin-modal">
             <div class="admin-modal__content">
                 <h3>Reject Organization</h3>
-                <p>Please provide a reason for rejecting <strong>{{ selectedOrganization.name }}</strong>. This reason will be visible to the organization.</p>
+                <p>Please provide a reason for rejecting <strong>{{ selectedOrganization.name }}</strong>. This reason
+                    will be visible to the organization.</p>
                 <div class="admin-modal__form">
                     <label for="rejectionReason">Rejection Reason *</label>
-                    <textarea id="rejectionReason" 
-                        [(ngModel)]="rejectionReason" 
-                        rows="4" 
-                        maxlength="255"
-                        placeholder="Enter the reason for rejection..."
-                        class="form-control"></textarea>
+                    <textarea id="rejectionReason" [(ngModel)]="rejectionReason" rows="4" maxlength="255"
+                        placeholder="Enter the reason for rejection..." class="form-control"></textarea>
                     <small class="form-text text-muted">{{ rejectionReason.length }}/255 characters</small>
                 </div>
                 <div class="admin-actions">
                     <button class="btn btn-outline-secondary" (click)="cancelRejectOrganization()">Cancel</button>
-                    <button class="btn btn-warning" 
-                        (click)="rejectOrganization()"
+                    <button class="btn btn-warning" (click)="rejectOrganization()"
                         [disabled]="!rejectionReason || rejectionReason.trim().length === 0">
                         Reject Organization
                     </button>
@@ -437,6 +1017,221 @@
                 <div class="admin-actions">
                     <button class="btn btn-outline-secondary" (click)="cancelDeleteEvent()">Cancel</button>
                     <button class="btn btn-danger" (click)="deleteEvent()">Delete Event</button>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="showRespondSupportMessageModal && selectedSupportMessage" class="admin-modal">
+            <div class="admin-modal__content">
+                <h3>{{ (selectedSupportMessage.isResolved === 1 || selectedSupportMessage.isResolved === true) ? 'View
+                    Support Message' : 'Respond to Support Message' }}</h3>
+                <div class="admin-modal__message-details mb-3">
+                    <p><strong>From:</strong> {{ selectedSupportMessage.name }} ({{ selectedSupportMessage.email }})</p>
+                    <p><strong>Subject:</strong> {{ selectedSupportMessage.subject }}</p>
+                    <p><strong>Date:</strong> {{ formatSupportMessageDate(selectedSupportMessage.createdAt ||
+                        selectedSupportMessage.submittedAt) }}</p>
+                    <div class="admin-modal__message-content">
+                        <strong>Message:</strong>
+                        <div class="p-2 bg-light rounded mt-2">{{ selectedSupportMessage.message }}</div>
+                    </div>
+                    <div *ngIf="selectedSupportMessage.responseMessage" class="admin-modal__response-content mt-3">
+                        <strong>Previous Response:</strong>
+                        <div class="p-2 bg-success bg-opacity-10 rounded mt-2">{{ selectedSupportMessage.responseMessage
+                            }}</div>
+                        <small class="text-muted">Responded: {{
+                            formatSupportMessageDate(selectedSupportMessage.respondedAt) }}</small>
+                    </div>
+                </div>
+                <div class="admin-modal__form"
+                    *ngIf="!(selectedSupportMessage.isResolved === 1 || selectedSupportMessage.isResolved === true)">
+                    <label for="responseMessage">Response Message *</label>
+                    <textarea id="responseMessage" [(ngModel)]="responseMessage" rows="6" maxlength="65535"
+                        placeholder="Enter your response..." class="form-control"></textarea>
+                    <small class="form-text text-muted">{{ responseMessage.length }}/65535 characters</small>
+                </div>
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="cancelRespondSupportMessage()">Close</button>
+                    <button
+                        *ngIf="!(selectedSupportMessage.isResolved === 1 || selectedSupportMessage.isResolved === true)"
+                        class="btn btn-success" (click)="respondToSupportMessage()"
+                        [disabled]="!responseMessage || responseMessage.trim().length === 0">
+                        Send Response
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div *ngIf="showDeleteSupportMessageConfirmation && selectedSupportMessage" class="admin-modal">
+            <div class="admin-modal__content">
+                <h3>Delete Support Message</h3>
+                <p>Are you sure you want to delete the support message from <strong>{{ selectedSupportMessage.name
+                        }}</strong>? This action cannot be undone.</p>
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="cancelDeleteSupportMessage()">Cancel</button>
+                    <button class="btn btn-danger" (click)="deleteSupportMessage()">Delete Message</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Audit Log Details Modal -->
+        <div *ngIf="showAuditLogDetailsModal && selectedAuditLog" class="admin-modal">
+            <div class="admin-modal__content admin-modal__content--large">
+                <h3>Audit Log Details</h3>
+                <div class="admin-modal__audit-details">
+                    <div class="admin-modal__audit-row">
+                        <strong>Log ID:</strong>
+                        <span>{{ selectedAuditLog.logId }}</span>
+                    </div>
+                    <div class="admin-modal__audit-row">
+                        <strong>Date/Time:</strong>
+                        <span>{{ formatAuditLogDate(selectedAuditLog.occurredAt) }}</span>
+                    </div>
+                    <div class="admin-modal__audit-row">
+                        <strong>Action:</strong>
+                        <span [ngClass]="getActionBadgeClass(selectedAuditLog.action)">{{ selectedAuditLog.action
+                            }}</span>
+                    </div>
+                    <div class="admin-modal__audit-row">
+                        <strong>Entity Type:</strong>
+                        <span>{{ selectedAuditLog.entityType }}</span>
+                    </div>
+                    <div class="admin-modal__audit-row">
+                        <strong>Entity ID:</strong>
+                        <span>{{ selectedAuditLog.entityId ?? 'N/A' }}</span>
+                    </div>
+                    <div class="admin-modal__audit-row">
+                        <strong>Actor User ID:</strong>
+                        <span>{{ selectedAuditLog.actorUserId ?? 'System' }}</span>
+                    </div>
+                    <div class="admin-modal__audit-row">
+                        <strong>Actor Name:</strong>
+                        <span>{{ getActorName(selectedAuditLog.actorUserId) }}</span>
+                    </div>
+                    <div class="admin-modal__audit-row admin-modal__audit-row--full">
+                        <strong>Details:</strong>
+                        <pre
+                            class="admin-modal__audit-details-json">{{ formatAuditLogDetails(selectedAuditLog.details) }}</pre>
+                    </div>
+                </div>
+                <div class="admin-actions">
+                    <button class="btn btn-outline-secondary" (click)="closeAuditLogDetails()">Close</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tags Management Section -->
+        <section class="admin-card card shadow-sm" *ngIf="activeTab === 'tags'">
+            <div class="admin-card__header">
+                <div>
+                    <h2>Tag Management</h2>
+                    <p>Create, update, and delete tags used for categorizing events.</p>
+                </div>
+                <button type="button" class="btn btn-success" (click)="openCreateTagModal()">
+                    <i class="bi bi-plus-circle me-1"></i>Create Tag
+                </button>
+            </div>
+            <div class="admin-filters">
+                <div class="admin-filter">
+                    <label for="tagSearch">Search</label>
+                    <input id="tagSearch" type="text" [(ngModel)]="tagSearchTerm" (ngModelChange)="applyTagFilters()"
+                        placeholder="Search by name">
+                </div>
+            </div>
+            <div class="admin-table" *ngIf="filteredTags.length > 0; else emptyTags">
+                <table>
+                    <thead>
+                        <tr>
+                            <th (click)="setTagSort('name')" class="sortable">
+                                Name
+                                <i class="bi" [ngClass]="getTagSortIcon('name')"></i>
+                            </th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr *ngFor="let tag of paginatedTags">
+                            <td>{{ tag.name }}</td>
+                            <td>
+                                <button type="button" class="btn btn-sm btn-outline-primary me-2"
+                                    (click)="openEditTagModal(tag)">
+                                    <i class="bi bi-pencil me-1"></i>Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-danger"
+                                    (click)="confirmDeleteTag(tag)">
+                                    <i class="bi bi-trash me-1"></i>Delete
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <ng-template #emptyTags>
+                <div class="admin-empty">
+                    <p>No tags found.</p>
+                </div>
+            </ng-template>
+            <div class="admin-pagination" *ngIf="filteredTags.length > tagPageSize">
+                <div class="admin-pagination__size">
+                    <label>Show:</label>
+                    <select [(ngModel)]="tagPageSize" (change)="updateTagPagination()">
+                        <option *ngFor="let size of tagPageSizeOptions" [value]="size">{{ size }}</option>
+                    </select>
+                </div>
+                <div class="admin-pagination__controls">
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        (click)="goToTagPage(tagCurrentPage - 1)" [disabled]="tagCurrentPage === 1">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </button>
+                    <span class="admin-pagination__info">
+                        Page {{ tagCurrentPage }} of {{ totalTagPages }} ({{ filteredTags.length }} total)
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-secondary"
+                        (click)="goToTagPage(tagCurrentPage + 1)" [disabled]="tagCurrentPage === totalTagPages">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- Edit/Create Tag Modal -->
+        <div *ngIf="showEditTagModal" class="admin-modal">
+            <div class="admin-modal__content">
+                <h2>{{ editingTag ? 'Edit Tag' : 'Create Tag' }}</h2>
+                <div class="admin-form">
+                    <div class="admin-field">
+                        <label for="tagName">Tag Name *</label>
+                        <input id="tagName" type="text" [(ngModel)]="newTagName" maxlength="50" required
+                            placeholder="Enter tag name">
+                        <small class="form-text text-muted">Tag name must be between 1 and 50 characters.</small>
+                    </div>
+                </div>
+                <div class="admin-actions">
+                    <button type="button" class="btn btn-outline-secondary" (click)="closeEditTagModal()"
+                        [disabled]="isCreatingTag || isUpdatingTag">Cancel</button>
+                    <button type="button" class="btn btn-success" (click)="editingTag ? updateTag() : createTag()"
+                        [disabled]="isCreatingTag || isUpdatingTag || !newTagName.trim()">
+                        <span *ngIf="isCreatingTag || isUpdatingTag" class="spinner-border spinner-border-sm me-2"
+                            role="status"></span>
+                        {{ editingTag ? (isUpdatingTag ? 'Updating...' : 'Update Tag') : (isCreatingTag ? 'Creating...'
+                        : 'Create Tag') }}
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Tag Confirmation Modal -->
+        <div *ngIf="showDeleteTagConfirmation" class="admin-modal">
+            <div class="admin-modal__content">
+                <h2>Delete Tag</h2>
+                <p>Are you sure you want to delete the tag <strong>{{ selectedTag?.name }}</strong>?</p>
+                <p class="text-muted">This action cannot be undone. Events using this tag will lose the association.</p>
+                <div class="admin-actions">
+                    <button type="button" class="btn btn-outline-secondary" (click)="cancelDeleteTag()"
+                        [disabled]="isDeletingTag">Cancel</button>
+                    <button type="button" class="btn btn-danger" (click)="deleteTag()" [disabled]="isDeletingTag">
+                        <span *ngIf="isDeletingTag" class="spinner-border spinner-border-sm me-2" role="status"></span>
+                        {{ isDeletingTag ? 'Deleting...' : 'Delete Tag' }}
+                    </button>
                 </div>
             </div>
         </div>

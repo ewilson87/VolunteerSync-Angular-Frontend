@@ -28,34 +28,81 @@
     <section class="event-filters card shadow-sm">
         <div class="event-filters__header">
             <h2>Search &amp; Filter</h2>
-            <p>Use filters to narrow events by city, state, organization, or date.</p>
+            <p>Use filters to narrow events by city, state, organization, date, or tags.</p>
         </div>
         <div class="event-filters__controls">
             <div class="field">
                 <label for="cityFilter">City</label>
-                <input type="text" id="cityFilter" [(ngModel)]="cityFilter" placeholder="Any city">
+                <input type="text" id="cityFilter" [(ngModel)]="cityFilter" placeholder="Any city"
+                    (keyup.enter)="applyFilters()">
             </div>
             <div class="field">
                 <label for="stateFilter">State</label>
-                <select id="stateFilter" [(ngModel)]="stateFilter">
+                <select id="stateFilter" [(ngModel)]="stateFilter" (keyup.enter)="applyFilters()">
                     <option value="">All States</option>
-                    <option *ngFor="let state of usStates" [value]="state.code">{{ state.name }} ({{ state.code }})</option>
+                    <option *ngFor="let state of usStates" [value]="state.code">{{ state.name }} ({{ state.code }})
+                    </option>
                 </select>
             </div>
             <div class="field">
                 <label for="organizationFilter">Organization</label>
-                <select id="organizationFilter" [(ngModel)]="organizationFilter">
+                <select id="organizationFilter" [(ngModel)]="organizationFilter" (keyup.enter)="applyFilters()">
                     <option [value]="0">All Organizations</option>
                     <option *ngFor="let org of organizations" [value]="org.organizationId">{{ org.name }}</option>
                 </select>
             </div>
             <div class="field">
                 <label for="dateStartFilter">Start Date</label>
-                <input type="date" id="dateStartFilter" [(ngModel)]="dateStartFilter">
+                <input type="date" id="dateStartFilter" [(ngModel)]="dateStartFilter" (keyup.enter)="applyFilters()">
             </div>
             <div class="field">
                 <label for="dateEndFilter">End Date</label>
-                <input type="date" id="dateEndFilter" [(ngModel)]="dateEndFilter">
+                <input type="date" id="dateEndFilter" [(ngModel)]="dateEndFilter" (keyup.enter)="applyFilters()">
+            </div>
+            <div class="field field--full event-tags-dropdown-wrapper">
+                <label>Tags</label>
+                <div class="event-tags-selected" *ngIf="selectedTags.length > 0">
+                    <div class="event-tags-badges">
+                        <span class="event-tag-badge" *ngFor="let tag of selectedTags">
+                            {{ tag.name }}
+                            <button type="button" class="event-tag-remove" (click)="removeTag(tag.tagId)"
+                                [attr.aria-label]="'Remove ' + tag.name">
+                                <i class="bi bi-x"></i>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+                <div class="event-tags-dropdown-wrapper">
+                    <button type="button" class="event-tags-dropdown-toggle"
+                        (click)="tagsDropdownOpen = !tagsDropdownOpen">
+                        <i class="bi bi-tags"></i>
+                        <span>{{ selectedTags.length > 0 ? selectedTags.length + ' tag' + (selectedTags.length !== 1 ?
+                            's' : '') + ' selected' : 'Select tags...' }}</span>
+                        <i class="bi" [ngClass]="tagsDropdownOpen ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                    </button>
+
+                    <div class="event-tags-dropdown" *ngIf="tagsDropdownOpen" (click)="$event.stopPropagation()">
+                        <div class="event-tags-search">
+                            <i class="bi bi-search"></i>
+                            <input type="text" placeholder="Search tags..." [(ngModel)]="tagSearchQuery"
+                                name="tagSearchQuery" (click)="$event.stopPropagation()">
+                        </div>
+                        <div class="event-tags-list">
+                            <div *ngIf="tagsLoading" class="event-tags-loading">
+                                <i class="bi bi-arrow-repeat"></i> Loading tags...
+                            </div>
+                            <div *ngIf="!tagsLoading && filteredTags.length === 0" class="event-tags-empty">
+                                No tags found matching "{{ tagSearchQuery }}"
+                            </div>
+                            <label class="event-tags-option" *ngFor="let tag of filteredTags"
+                                (click)="toggleTag(tag.tagId)">
+                                <input type="checkbox" [checked]="selectedTagIds.includes(tag.tagId)"
+                                    (change)="$event.stopPropagation()" readonly>
+                                <span>{{ tag.name }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
             </div>
             <div class="event-filters__actions">
                 <button class="btn btn-success" (click)="applyFilters()">
@@ -148,7 +195,7 @@
                                 <i class="bi bi-calendar-date me-1"></i>{{ event.eventDate | date:'mediumDate' }}
                             </span>
                             <span class="event-table__meta">
-                                <i class="bi bi-clock me-1"></i>{{ event.eventTime }}
+                                <i class="bi bi-clock me-1"></i>{{ formatTime12Hour(event.eventTime) }}
                             </span>
                         </div>
                         <div>
@@ -162,7 +209,7 @@
                             </span>
                         </div>
                         <div>
-                            <span class="tag" *ngFor="let tag of event.tags">{{ tag }}</span>
+                            <span class="tag" *ngFor="let tag of event.tags">{{ tag.name }}</span>
                             <span class="tag" *ngIf="!event.tags || event.tags.length === 0">General</span>
                         </div>
                         <div class="text-end">

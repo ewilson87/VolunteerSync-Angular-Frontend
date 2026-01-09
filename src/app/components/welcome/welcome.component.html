@@ -15,7 +15,11 @@
                         <a class="btn btn-outline-light btn-lg" routerLink="/register" [queryParams]="{ role: 'volunteer' }">Join as Volunteer</a>
                     </ng-container>
                     <ng-template #loggedInCtas>
-                        <a class="btn btn-outline-light btn-lg" routerLink="/profile">Go to My Dashboard</a>
+                        <a class="btn btn-outline-light btn-lg me-3" *ngIf="isAdmin" routerLink="/profile">My Profile</a>
+                        <a class="btn btn-outline-light btn-lg me-3" *ngIf="isAdmin" routerLink="/admin">Admin Dashboard</a>
+                        <a class="btn btn-outline-light btn-lg me-3" *ngIf="isOrganizer" routerLink="/organizer">Organizer Dashboard</a>
+                        <a class="btn btn-outline-light btn-lg me-3" *ngIf="isOrganizer" routerLink="/profile">My Profile</a>
+                        <a class="btn btn-outline-light btn-lg" *ngIf="!isAdmin && !isOrganizer" routerLink="/profile">My Profile</a>
                     </ng-template>
                 </div>
                 <ul class="hero-highlights">

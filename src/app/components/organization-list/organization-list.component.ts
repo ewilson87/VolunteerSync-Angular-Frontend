@@ -4,6 +4,8 @@ import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { VolunteerService } from '../../services/volunteer-service.service';
 import { Organization } from '../../models/organization.model';
+import { AuthService } from '../../services/auth.service';
+import { User } from '../../models/user.model';
 
 @Component({
     selector: 'app-organization-list',
@@ -31,12 +33,31 @@ export class OrganizationListComponent implements OnInit {
     pageSize = 10;
     currentPage = 1;
 
-    constructor(private volunteerService: VolunteerService) { }
+    // Authentication and follow properties
+    isLoggedIn: boolean = false;
+    currentUser: User | null = null;
+    organizationFollowStatus: Map<number, boolean> = new Map();
+    togglingFollow: Set<number> = new Set();
+    checkingFollow: Set<number> = new Set();
+
+    constructor(
+        private volunteerService: VolunteerService,
+        private authService: AuthService
+    ) { }
 
     /**
      * Initializes the component and loads organizations.
      */
     ngOnInit(): void {
+        // Set up authentication subscriptions
+        this.authService.isLoggedIn.subscribe(loggedIn => {
+            this.isLoggedIn = loggedIn;
+        });
+
+        this.authService.currentUser.subscribe(user => {
+            this.currentUser = user;
+        });
+
         this.loadOrganizations();
     }
 
@@ -64,12 +85,120 @@ export class OrganizationListComponent implements OnInit {
                 this.allOrganizations = organizations ?? [];
                 this.applyFilters();
                 this.loading = false;
+                // Check follow status for all organizations if user is logged in
+                if (this.isLoggedIn && this.currentUser) {
+                    this.checkAllFollowStatuses();
+                }
             },
             error: (error) => {
                 this.error = 'Failed to load organizations. Please try again later.';
                 this.loading = false;
             }
         });
+    }
+
+    /**
+     * Checks follow status for all organizations.
+     */
+    checkAllFollowStatuses(): void {
+        if (!this.isLoggedIn || !this.currentUser) {
+            return;
+        }
+
+        this.allOrganizations.forEach(org => {
+            if (org.organizationId) {
+                this.checkFollowStatus(org.organizationId);
+            }
+        });
+    }
+
+    /**
+     * Checks if the current user follows an organization.
+     * 
+     * @param organizationId - The ID of the organization
+     */
+    checkFollowStatus(organizationId: number): void {
+        if (!this.isLoggedIn || !this.currentUser || !this.currentUser.userId || this.checkingFollow.has(organizationId)) {
+            return;
+        }
+
+        const userId = this.currentUser.userId;
+        this.checkingFollow.add(organizationId);
+        this.volunteerService.checkUserFollowsOrganization(userId, organizationId).subscribe({
+            next: (status) => {
+                this.organizationFollowStatus.set(organizationId, status.isFollowing);
+                this.checkingFollow.delete(organizationId);
+            },
+            error: (error) => {
+                // Silently handle 404 errors (endpoint may not be implemented yet)
+                if (error.status !== 404) {
+                    console.error('Error checking follow status', error);
+                }
+                this.organizationFollowStatus.set(organizationId, false);
+                this.checkingFollow.delete(organizationId);
+            }
+        });
+    }
+
+    /**
+     * Checks if a user follows an organization.
+     * 
+     * @param organizationId - The ID of the organization
+     * @returns True if the user follows the organization
+     */
+    isFollowingOrganization(organizationId: number): boolean {
+        return this.organizationFollowStatus.get(organizationId) ?? false;
+    }
+
+    /**
+     * Toggles follow status for an organization.
+     * 
+     * @param organizationId - The ID of the organization
+     */
+    toggleFollowOrganization(organizationId: number): void {
+        if (!this.isLoggedIn || !this.currentUser || !this.currentUser.userId || this.togglingFollow.has(organizationId)) {
+            return;
+        }
+
+        const userId = this.currentUser.userId;
+        this.togglingFollow.add(organizationId);
+        const isFollowing = this.isFollowingOrganization(organizationId);
+
+        if (isFollowing) {
+            // Unfollow
+            this.volunteerService.unfollowOrganization(userId, organizationId).subscribe({
+                next: () => {
+                    this.organizationFollowStatus.set(organizationId, false);
+                    this.togglingFollow.delete(organizationId);
+                },
+                error: (error) => {
+                    // Only log non-404 errors (404 means endpoint not implemented)
+                    if (error.status !== 404) {
+                        console.error('Error unfollowing organization', error);
+                    } else {
+                        console.warn('Unfollow organization endpoint not available (404). Backend may need to implement this feature.');
+                    }
+                    this.togglingFollow.delete(organizationId);
+                }
+            });
+        } else {
+            // Follow
+            this.volunteerService.followOrganization(userId, organizationId).subscribe({
+                next: () => {
+                    this.organizationFollowStatus.set(organizationId, true);
+                    this.togglingFollow.delete(organizationId);
+                },
+                error: (error) => {
+                    // Only log non-404 errors (404 means endpoint not implemented)
+                    if (error.status !== 404) {
+                        console.error('Error following organization', error);
+                    } else {
+                        console.warn('Follow organization endpoint not available (404). Backend may need to implement this feature.');
+                    }
+                    this.togglingFollow.delete(organizationId);
+                }
+            });
+        }
     }
 
     /**

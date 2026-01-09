@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, HostListener } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule, Router } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -7,6 +7,8 @@ import { Event } from '../../models/event.model';
 import { Organization } from '../../models/organization.model';
 import { AuthService } from '../../services/auth.service';
 import { InputValidationService } from '../../services/input-validation.service';
+import { Tag } from '../../models/tag.model';
+import { forkJoin } from 'rxjs';
 
 @Component({
     selector: 'app-create-event',
@@ -21,6 +23,7 @@ export class CreateEventComponent implements OnInit {
         description: '',
         eventDate: '',
         eventTime: '',
+        eventLengthHours: 1,
         locationName: '',
         address: '',
         city: '',
@@ -41,6 +44,87 @@ export class CreateEventComponent implements OnInit {
     isAdmin: boolean = false;
     userOrgId: number | null = null;
     today: string = '';
+
+    // Tags
+    availableTags: Tag[] = [];
+    selectedTagIds: number[] = [];
+    tagsLoading = false;
+    tagsError = '';
+    tagsDropdownOpen = false;
+    tagSearchQuery = '';
+
+    // Time picker properties (15-minute intervals)
+    eventHour: number = 9;
+    eventMinute: number = 0;
+    eventAmPm: 'AM' | 'PM' = 'AM';
+    readonly availableMinutes = [0, 15, 30, 45];
+    readonly availableHours = Array.from({ length: 12 }, (_, i) => i + 1);
+
+    /**
+     * Converts 12-hour format (hour, minute, AM/PM) to 24-hour format (HH:MM)
+     */
+    updateEventTime(): void {
+        // Ensure values are numbers (select elements may return strings)
+        let hour = typeof this.eventHour === 'string' ? parseInt(this.eventHour, 10) : this.eventHour;
+        let minute = typeof this.eventMinute === 'string' ? parseInt(this.eventMinute, 10) : this.eventMinute;
+        
+        // Use default values if invalid
+        if (isNaN(hour) || hour < 1 || hour > 12) {
+            console.warn('Invalid hour value, using default:', { hour: this.eventHour });
+            hour = 9;
+            this.eventHour = 9;
+        }
+        if (isNaN(minute) || minute < 0 || minute > 59) {
+            console.warn('Invalid minute value, using default:', { minute: this.eventMinute });
+            minute = 0;
+            this.eventMinute = 0;
+        }
+        
+        let hour24 = hour;
+        
+        // Convert to 24-hour format
+        if (this.eventAmPm === 'PM' && hour !== 12) {
+            hour24 = hour + 12;
+        } else if (this.eventAmPm === 'AM' && hour === 12) {
+            hour24 = 0;
+        }
+        
+        const hourStr = hour24.toString().padStart(2, '0');
+        const minuteStr = minute.toString().padStart(2, '0');
+        // Format as HH:MM for API (API expects HH:MM format, not HH:MM:SS)
+        this.event.eventTime = `${hourStr}:${minuteStr}`;
+    }
+
+    /**
+     * Parses eventTime (HH:MM:SS or HH:MM) and sets hour, minute, and AM/PM
+     */
+    parseEventTime(): void {
+        if (this.event.eventTime) {
+            const timeParts = this.event.eventTime.split(':');
+            const hour24 = parseInt(timeParts[0], 10) || 9;
+            const minute = parseInt(timeParts[1], 10) || 0;
+            
+            // Convert 24-hour to 12-hour format
+            if (hour24 === 0) {
+                this.eventHour = 12;
+                this.eventAmPm = 'AM';
+            } else if (hour24 === 12) {
+                this.eventHour = 12;
+                this.eventAmPm = 'PM';
+            } else if (hour24 < 12) {
+                this.eventHour = hour24;
+                this.eventAmPm = 'AM';
+            } else {
+                this.eventHour = hour24 - 12;
+                this.eventAmPm = 'PM';
+            }
+            
+            // Round minute to nearest 15-minute interval
+            const roundedMinute = Math.round(minute / 15) * 15;
+            this.eventMinute = roundedMinute === 60 ? 0 : roundedMinute;
+            this.updateEventTime();
+        }
+    }
 
     get canCreateEvents(): boolean {
         // Admins can always create events
@@ -120,6 +204,12 @@ export class CreateEventComponent implements OnInit {
      */
     ngOnInit(): void {
         this.today = new Date().toISOString().split('T')[0];
+        // Initialize time picker
+        if (this.event.eventTime) {
+            this.parseEventTime();
+        } else {
+            this.updateEventTime(); // Set default time (9:00 AM)
+        }
         const currentUser = this.authService.currentUserValue;
 
         if (!currentUser) {
@@ -157,6 +247,7 @@ export class CreateEventComponent implements OnInit {
         }
 
         this.loadOrganizations();
+        this.loadTags();
     }
 
     /**
@@ -238,6 +329,111 @@ export class CreateEventComponent implements OnInit {
         }
     }
 
+    /**
+     * Loads all available tags for use on the event form.
+     */
+    loadTags(): void {
+        this.tagsLoading = true;
+        this.tagsError = '';
+
+        this.volunteerService.getAllTags().subscribe({
+            next: (tags) => {
+                this.availableTags = tags || [];
+                this.tagsLoading = false;
+            },
+            error: (error) => {
+                console.error('Error loading tags', error);
+                this.tagsError = 'Tags could not be loaded. You can still create the event without tags.';
+                this.tagsLoading = false;
+            }
+        });
+    }
+
+    /**
+     * Toggles a tag selection when the checkbox is changed.
+     * 
+     * @param tagId - ID of the tag to toggle
+     * @param checked - Whether the checkbox is checked
+     */
+    onTagToggle(tagId: number, checked: boolean): void {
+        if (checked) {
+            if (!this.selectedTagIds.includes(tagId)) {
+                this.selectedTagIds = [...this.selectedTagIds, tagId];
+            }
+        } else {
+            this.selectedTagIds = this.selectedTagIds.filter(id => id !== tagId);
+        }
+    }
+
+    /**
+     * Toggles tag selection by clicking on it in the dropdown.
+     * 
+     * @param tagId - ID of the tag to toggle
+     */
+    toggleTag(tagId: number): void {
+        if (this.selectedTagIds.includes(tagId)) {
+            this.selectedTagIds = this.selectedTagIds.filter(id => id !== tagId);
+        } else {
+            this.selectedTagIds = [...this.selectedTagIds, tagId];
+        }
+    }
+
+    /**
+     * Removes a selected tag.
+     * 
+     * @param tagId - ID of the tag to remove
+     */
+    removeTag(tagId: number): void {
+        this.selectedTagIds = this.selectedTagIds.filter(id => id !== tagId);
+    }
+
+    /**
+     * Gets filtered tags based on search query.
+     */
+    get filteredTags(): Tag[] {
+        if (!this.tagSearchQuery.trim()) {
+            return this.availableTags;
+        }
+        const query = this.tagSearchQuery.toLowerCase();
+        return this.availableTags.filter(tag => 
+            tag.name.toLowerCase().includes(query)
+        );
+    }
+
+    /**
+     * Gets the name of a tag by its ID.
+     */
+    getTagName(tagId: number): string {
+        const tag = this.availableTags.find(t => t.tagId === tagId);
+        return tag ? tag.name : '';
+    }
+
+    /**
+     * Gets selected tags as Tag objects.
+     */
+    get selectedTags(): Tag[] {
+        return this.availableTags.filter(tag => this.selectedTagIds.includes(tag.tagId));
+    }
+
+    /**
+     * Closes the tags dropdown when clicking outside.
+     */
+    closeTagsDropdown(): void {
+        this.tagsDropdownOpen = false;
+        this.tagSearchQuery = '';
+    }
+
+    /**
+     * Listens for clicks outside the dropdown to close it.
+     */
+    @HostListener('document:click', ['$event'])
+    onDocumentClick(event: MouseEvent): void {
+        const target = event.target as HTMLElement;
+        if (!target.closest('.create-event-tags-dropdown-wrapper')) {
+            this.closeTagsDropdown();
+        }
+    }
+
     onSubmit(): void {
         // Check if organizer's organization is approved (additional security check)
         if (this.isOrganizer && this.userOrganization) {
@@ -283,6 +479,15 @@ export class CreateEventComponent implements OnInit {
             return;
         }
         this.event.eventDate = dateValidation.sanitized;
+
+        // Ensure time is updated from time picker before validation
+        this.updateEventTime();
+        
+        // Ensure eventTime is set and is a string
+        if (!this.event.eventTime || typeof this.event.eventTime !== 'string') {
+            this.errorMessage = 'Please select a valid event time';
+            return;
+        }
 
         // Validate time
         const timeValidation = this.inputValidation.validateTime(this.event.eventTime);
@@ -335,6 +540,19 @@ export class CreateEventComponent implements OnInit {
             return;
         }
         this.event.state = stateValidation.sanitized;
+
+        // Validate eventLengthHours (required, must be 1-24)
+        const hoursValidation = this.inputValidation.validateNumber(
+            this.event.eventLengthHours,
+            1,
+            24,
+            'Event length (hours)'
+        );
+        if (!hoursValidation.isValid) {
+            this.errorMessage = hoursValidation.error || 'Event length must be between 1 and 24 hours';
+            return;
+        }
+        this.event.eventLengthHours = hoursValidation.sanitized;
 
         // Validate numNeeded
         const numNeededValidation = this.inputValidation.validateNumber(
@@ -391,14 +609,44 @@ export class CreateEventComponent implements OnInit {
         this.loading = true;
         this.volunteerService.createEvent(this.event).subscribe({
             next: (response) => {
-                this.successMessage = 'Event created successfully!';
-                this.errorMessage = '';
-                this.loading = false;
+                // Try to determine the new event ID from the response
+                const newEventId: number | undefined =
+                    response?.eventId ?? response?.insertId ?? response?.id;
 
-                // Redirect to events page after a delay
-                setTimeout(() => {
-                    this.router.navigate(['/events']);
-                }, 2000);
+                const finalizeSuccess = () => {
+                    this.successMessage = 'Event created successfully!';
+                    this.errorMessage = '';
+                    this.loading = false;
+
+                    // Redirect to events page after a delay
+                    setTimeout(() => {
+                        this.router.navigate(['/events']);
+                    }, 2000);
+                };
+
+                // If we have tags selected and a valid event ID, add tags
+                if (newEventId && this.selectedTagIds.length > 0) {
+                    const tagRequests = this.selectedTagIds.map(tagId =>
+                        this.volunteerService.addTagToEvent(newEventId, tagId)
+                    );
+
+                    forkJoin(tagRequests).subscribe({
+                        next: () => {
+                            finalizeSuccess();
+                        },
+                        error: (tagError) => {
+                            console.error('Error adding tags to event', tagError);
+                            // Still consider the event created, but show a warning
+                            this.successMessage = 'Event created, but some tags could not be saved.';
+                            this.loading = false;
+                            setTimeout(() => {
+                                this.router.navigate(['/events']);
+                            }, 2000);
+                        }
+                    });
+                } else {
+                    finalizeSuccess();
+                }
             },
             error: (error) => {
                 console.error('Error creating event', error);

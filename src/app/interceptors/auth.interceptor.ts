@@ -11,22 +11,43 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
     // Skip adding auth header for login, registration, and public verification endpoints
     const isAuthEndpoint = req.url.includes('/users/login') || 
                            req.url.includes('/users/register') ||
-                           req.url.includes('/users/email/') ||
+                           req.url.includes('/users/email/') || 
                            req.url.includes('/certificates/verify/');
     
     if (isAuthEndpoint) {
-        console.log('AuthInterceptor: Skipping auth header for public endpoint:', req.url);
         return next(req);
     }
     
     // Get token from AuthService (which handles browser/server checks)
     const token = authService.getToken();
-    
-    console.log('AuthInterceptor: Processing request to', req.url);
-    console.log('AuthInterceptor: Token exists?', !!token);
-    if (token) {
-        console.log('AuthInterceptor: Token (first 20 chars):', token.substring(0, 20) + '...');
-    }
+    const isLoggedIn = authService.isLoggedInValue;
+
+    // Helper function to handle authentication errors (401/403)
+    const handleAuthError = (error: HttpErrorResponse) => {
+        // Only logout if user appears to be logged in (has token or isLoggedIn is true)
+        // This prevents logging out users who are already logged out or on public pages
+        if ((token || isLoggedIn) && (error.status === 401 || error.status === 403)) {
+            // Check if this is a business logic error (not an auth error)
+            const errorMessage = error.error?.message || error.error?.error?.message || '';
+            const isBusinessLogicError = errorMessage.includes('Cannot change the role') ||
+                                        errorMessage.includes('cannot delete your own account') ||
+                                        errorMessage.includes('only remaining admin') ||
+                                        errorMessage.includes('only organizer');
+            
+            if (isBusinessLogicError) {
+                // This is a business logic error, not an auth failure - don't log out
+                console.log(`Received ${error.status} Forbidden - business logic error: ${errorMessage}`);
+                return throwError(() => error);
+            }
+            
+            // This is an actual auth error - log out the user
+            console.log(`Received ${error.status} ${error.status === 401 ? 'Unauthorized' : 'Forbidden'} - token may be expired or invalid`);
+            
+            // Logout the user (this will update the auth state, clear localStorage, and redirect)
+            authService.logout();
+        }
+        return throwError(() => error);
+    };
 
     // Clone the request and add the Authorization header if token exists
     if (token && !req.headers.has('Authorization')) {
@@ -35,55 +56,14 @@ export const authInterceptor: HttpInterceptorFn = (req, next) => {
                 'Authorization': `Bearer ${token}`
             }
         });
-        console.log('AuthInterceptor: Added Authorization header to request');
-        console.log('AuthInterceptor: Request headers:', cloned.headers.keys());
         
         return next(cloned).pipe(
-            catchError((error: HttpErrorResponse) => {
-                // Handle 401 Unauthorized errors
-                if (error.status === 401) {
-                    console.log('Received 401 Unauthorized - token may be expired or invalid');
-                    // Clear the token and user data
-                    try {
-                        localStorage.removeItem('token');
-                        localStorage.removeItem('user');
-                    } catch (e) {
-                        console.error('Error clearing localStorage:', e);
-                    }
-                    // Logout the user
-                    authService.logout();
-                    // Redirect to login with return URL
-                    const currentUrl = router.url;
-                    router.navigate(['/login'], {
-                        queryParams: { returnUrl: currentUrl }
-                    });
-                }
-                return throwError(() => error);
-            })
+            catchError(handleAuthError)
         );
-    }
-
-    // If no token or header already exists, just pass the request through
-    if (!token) {
-        console.log('AuthInterceptor: No token found, passing request through without Authorization header');
-    } else {
-        console.log('AuthInterceptor: Authorization header already exists, passing through');
     }
     
     return next(req).pipe(
-        catchError((error: HttpErrorResponse) => {
-            // Handle 401 even without token (in case token was removed)
-            if (error.status === 401) {
-                try {
-                    localStorage.removeItem('token');
-                    localStorage.removeItem('user');
-                } catch (e) {
-                    console.error('Error clearing localStorage:', e);
-                }
-                authService.logout();
-            }
-            return throwError(() => error);
-        })
+        catchError(handleAuthError)
     );
 };
 

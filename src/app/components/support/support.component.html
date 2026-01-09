@@ -127,14 +127,13 @@
                 <i class="bi bi-journal-text"></i>
                 <h3>Knowledge Base</h3>
                 <p>Step-by-step walkthroughs, FAQs, and best practices for every role.</p>
-                <a class="support-link" routerLink="/support" [queryParams]="{ section: 'kb' }">Browse articles</a>
+                <a class="support-link" routerLink="/knowledge-base">Browse articles</a>
             </div>
             <div class="support-resource">
                 <i class="bi bi-calendar2-check"></i>
                 <h3>Event Playbook</h3>
                 <p>Download templates and checklists to plan successful volunteer events.</p>
-                <a class="support-link" href="assets/resources/volunteersync-event-playbook.pdf" target="_blank"
-                    rel="noopener">
+                <a class="support-link" (click)="downloadEventPlaybook()" style="cursor: pointer;">
                     Download playbook
                 </a>
             </div>
@@ -142,8 +141,7 @@
                 <i class="bi bi-shield-check"></i>
                 <h3>Compliance &amp; Safety</h3>
                 <p>Review our data privacy commitments and site-wide safety guidelines.</p>
-                <a class="support-link" routerLink="/support" [queryParams]="{ section: 'compliance' }">Review
-                    policies</a>
+                <a class="support-link" routerLink="/compliance">Review policies</a>
             </div>
         </div>
     </section>

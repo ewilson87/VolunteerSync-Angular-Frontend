@@ -25,6 +25,14 @@
                 <h1>{{ event.title }}</h1>
                 <p class="event-hero__summary">{{ event.description | slice:0:160 }}{{ event.description.length > 160 ? '…' : '' }}</p>
 
+                <!-- Event Tags -->
+                <div class="event-hero__tags" *ngIf="eventTags.length > 0">
+                    <i class="bi bi-tags me-2"></i>
+                    <span class="event-hero__tag" *ngFor="let tag of eventTags">
+                        {{ tag.name }}
+                    </span>
+                </div>
+
                 <div class="event-hero__meta">
                     <div>
                         <span class="event-hero__meta-label">Date</span>
@@ -32,7 +40,7 @@
                     </div>
                     <div>
                         <span class="event-hero__meta-label">Time</span>
-                        <span class="event-hero__meta-value"><i class="bi bi-clock-history me-2"></i>{{ event.eventTime }}</span>
+                        <span class="event-hero__meta-value"><i class="bi bi-clock-history me-2"></i>{{ formatTime12Hour(event.eventTime) }}</span>
                     </div>
                     <div>
                         <span class="event-hero__meta-label">Location</span>
@@ -58,7 +66,7 @@
                         <h3>Schedule</h3>
                         <ul class="event-list">
                             <li><i class="bi bi-calendar-event"></i>{{ event.eventDate | date:'fullDate' }}</li>
-                            <li><i class="bi bi-clock"></i>{{ event.eventTime }}</li>
+                            <li><i class="bi bi-clock"></i>{{ formatTime12Hour(event.eventTime) }}</li>
                         </ul>
                     </div>
                     <div>
@@ -163,10 +171,20 @@
                         </li>
                     </ul>
 
-                    <div class="d-grid">
+                    <div class="d-grid gap-2">
                         <a [routerLink]="['/events']" [queryParams]="{organizationId: organization.organizationId}" class="btn btn-outline-success">
                             View More Events
                         </a>
+                        <button 
+                            *ngIf="isLoggedIn" 
+                            (click)="toggleFollowOrganization()" 
+                            [disabled]="isTogglingFollow || isCheckingFollow"
+                            class="btn"
+                            [ngClass]="isFollowingOrganization ? 'btn-success' : 'btn-outline-success'">
+                            <i class="bi me-2" [ngClass]="isFollowingOrganization ? 'bi-heart-fill' : 'bi-heart'"></i>
+                            <span *ngIf="isTogglingFollow">...</span>
+                            <span *ngIf="!isTogglingFollow">{{ isFollowingOrganization ? 'Following' : 'Follow' }}</span>
+                        </button>
                     </div>
                 </div>
             </aside>

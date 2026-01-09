@@ -1,0 +1,341 @@
+<div class="compliance-page">
+    <section class="compliance-hero card shadow-sm">
+        <div class="compliance-hero__content">
+            <h1>Compliance & Safety Policies</h1>
+            <p>VolunteerSync is committed to protecting your privacy, ensuring data security, and maintaining a safe environment for all users.</p>
+        </div>
+        <div class="compliance-hero__visual">
+            <div class="compliance-hero__orb"></div>
+            <div class="compliance-hero__icon"><i class="bi bi-shield-check"></i></div>
+        </div>
+    </section>
+
+    <section class="compliance-nav card shadow-sm">
+        <h2>Quick Navigation</h2>
+        <div class="compliance-nav__links">
+            <a (click)="toggleSection('terms')" class="compliance-nav__link">
+                <i class="bi bi-file-text"></i>
+                <span>Terms of Use</span>
+            </a>
+            <a (click)="toggleSection('privacy')" class="compliance-nav__link">
+                <i class="bi bi-lock"></i>
+                <span>Privacy Policy</span>
+            </a>
+            <a (click)="toggleSection('safety')" class="compliance-nav__link">
+                <i class="bi bi-shield-exclamation"></i>
+                <span>Safety Guidelines</span>
+            </a>
+            <a (click)="toggleSection('data')" class="compliance-nav__link">
+                <i class="bi bi-database"></i>
+                <span>Data Protection</span>
+            </a>
+        </div>
+    </section>
+
+    <section class="compliance-content">
+        <!-- Terms of Use -->
+        <div class="compliance-section card shadow-sm">
+            <div class="compliance-section__header" (click)="toggleSection('terms')">
+                <h2><i class="bi bi-file-text"></i> Terms of Use</h2>
+                <i class="bi" [ngClass]="expandedSection === 'terms' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+            <div class="compliance-section__content" [class.expanded]="expandedSection === 'terms'">
+                <div class="compliance-section__body">
+                    <p class="compliance-intro">By using VolunteerSync, you agree to comply with and be bound by the following terms and conditions. Please review them carefully.</p>
+
+                    <h3>1. Acceptance of Terms</h3>
+                    <p>By accessing and using VolunteerSync, you accept and agree to be bound by these Terms of Use. If you do not agree to these terms, you must not use our service.</p>
+
+                    <h3>2. User Accounts</h3>
+                    <p>You are responsible for maintaining the confidentiality of your account credentials. You agree to:</p>
+                    <ul>
+                        <li>Provide accurate, current, and complete information during registration</li>
+                        <li>Maintain and update your information to keep it accurate</li>
+                        <li>Notify us immediately of any unauthorized use of your account</li>
+                        <li>Accept responsibility for all activities that occur under your account</li>
+                    </ul>
+
+                    <h3>3. User Conduct</h3>
+                    <p>You agree to use VolunteerSync only for lawful purposes and in a way that does not infringe the rights of others. You must not:</p>
+                    <ul>
+                        <li>Post false, misleading, or fraudulent information</li>
+                        <li>Harass, abuse, or harm other users</li>
+                        <li>Violate any applicable laws or regulations</li>
+                        <li>Attempt to gain unauthorized access to the system</li>
+                        <li>Interfere with or disrupt the service</li>
+                        <li>Use the service to transmit viruses or malicious code</li>
+                    </ul>
+
+                    <h3>4. Organizer Responsibilities</h3>
+                    <p>Organizers are responsible for:</p>
+                    <ul>
+                        <li>Providing accurate information about their organization and events</li>
+                        <li>Ensuring events comply with all applicable laws and regulations</li>
+                        <li>Maintaining a safe environment for volunteers</li>
+                        <li>Accurately confirming volunteer attendance</li>
+                        <li>Responding to volunteer inquiries in a timely manner</li>
+                    </ul>
+
+                    <h3>5. Volunteer Responsibilities</h3>
+                    <p>Volunteers are responsible for:</p>
+                    <ul>
+                        <li>Providing accurate information in their profile</li>
+                        <li>Honoring commitments to events they register for</li>
+                        <li>Notifying organizers if they cannot attend an event</li>
+                        <li>Following safety guidelines and instructions at events</li>
+                        <li>Respecting organizers, other volunteers, and event participants</li>
+                    </ul>
+
+                    <h3>6. Intellectual Property</h3>
+                    <p>All content on VolunteerSync, including text, graphics, logos, and software, is the property of VolunteerSync or its content suppliers and is protected by copyright and other intellectual property laws.</p>
+
+                    <h3>7. Limitation of Liability</h3>
+                    <p>VolunteerSync provides the platform as-is and does not guarantee that the service will be uninterrupted, secure, or error-free. We are not liable for any indirect, incidental, or consequential damages arising from your use of the service.</p>
+
+                    <h3>8. Termination</h3>
+                    <p>We reserve the right to suspend or terminate your account at any time for violation of these terms or for any other reason we deem necessary to protect the integrity of the platform.</p>
+
+                    <h3>9. Changes to Terms</h3>
+                    <p>We may update these Terms of Use from time to time. Continued use of the service after changes constitutes acceptance of the new terms.</p>
+
+                    <p class="compliance-last-updated">Last Updated: {{ lastUpdatedDate }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Privacy Policy -->
+        <div class="compliance-section card shadow-sm">
+            <div class="compliance-section__header" (click)="toggleSection('privacy')">
+                <h2><i class="bi bi-lock"></i> Privacy Policy</h2>
+                <i class="bi" [ngClass]="expandedSection === 'privacy' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+            <div class="compliance-section__content" [class.expanded]="expandedSection === 'privacy'">
+                <div class="compliance-section__body">
+                    <p class="compliance-intro">Your privacy is important to us. This policy explains how we collect, use, and protect your personal information.</p>
+
+                    <h3>1. Information We Collect</h3>
+                    <p>We collect information that you provide directly to us, including:</p>
+                    <ul>
+                        <li>Name, email address, and contact information</li>
+                        <li>Account credentials (passwords are encrypted)</li>
+                        <li>Profile information and preferences</li>
+                        <li>Event registrations and volunteer history</li>
+                        <li>Organization details (for organizers)</li>
+                        <li>Support messages and communications</li>
+                    </ul>
+
+                    <h3>2. How We Use Your Information</h3>
+                    <p>We use your information to:</p>
+                    <ul>
+                        <li>Provide and improve our services</li>
+                        <li>Process event registrations and manage volunteer activities</li>
+                        <li>Send you important updates about your account and events</li>
+                        <li>Generate certificates and track volunteer hours</li>
+                        <li>Respond to your support requests</li>
+                        <li>Ensure platform security and prevent fraud</li>
+                    </ul>
+
+                    <h3>3. Information Sharing</h3>
+                    <p>We do not sell your personal information. We may share information only in the following circumstances:</p>
+                    <ul>
+                        <li>With event organizers when you register for their events</li>
+                        <li>For certificate verification (public verification IDs only)</li>
+                        <li>When required by law or to protect our rights</li>
+                        <li>With service providers who assist in operating our platform (under strict confidentiality agreements)</li>
+                    </ul>
+
+                    <h3>4. Data Security</h3>
+                    <p>We implement industry-standard security measures to protect your information:</p>
+                    <ul>
+                        <li>Encrypted passwords using secure hashing algorithms</li>
+                        <li>HTTPS encryption for all data transmission</li>
+                        <li>Regular security audits and updates</li>
+                        <li>Access controls and authentication</li>
+                        <li>Secure database storage with regular backups</li>
+                    </ul>
+
+                    <h3>5. Your Rights</h3>
+                    <p>You have the right to:</p>
+                    <ul>
+                        <li>Access and update your personal information</li>
+                        <li>Request deletion of your account and data</li>
+                        <li>Opt out of non-essential communications</li>
+                        <li>Export your volunteer history and certificates</li>
+                    </ul>
+
+                    <h3>6. Cookies and Tracking</h3>
+                    <p>We use cookies and similar technologies to maintain your session and improve your experience. You can control cookie preferences through your browser settings.</p>
+
+                    <h3>7. Children's Privacy</h3>
+                    <p>VolunteerSync is not intended for users under the age of 13. We do not knowingly collect information from children under 13.</p>
+
+                    <h3>8. Data Retention</h3>
+                    <p>We retain your information for as long as your account is active or as needed to provide services. You may request deletion of your data at any time.</p>
+
+                    <p class="compliance-last-updated">Last Updated: {{ lastUpdatedDate }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Safety Guidelines -->
+        <div class="compliance-section card shadow-sm">
+            <div class="compliance-section__header" (click)="toggleSection('safety')">
+                <h2><i class="bi bi-shield-exclamation"></i> Safety Guidelines</h2>
+                <i class="bi" [ngClass]="expandedSection === 'safety' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+            <div class="compliance-section__content" [class.expanded]="expandedSection === 'safety'">
+                <div class="compliance-section__body">
+                    <p class="compliance-intro">The safety of all users is our top priority. These guidelines help ensure a safe and positive experience for everyone.</p>
+
+                    <h3>1. Event Safety</h3>
+                    <p>Organizers are responsible for:</p>
+                    <ul>
+                        <li>Conducting safety assessments before events</li>
+                        <li>Providing clear safety instructions to volunteers</li>
+                        <li>Ensuring adequate supervision and first aid resources</li>
+                        <li>Following all applicable safety regulations and laws</li>
+                        <li>Having emergency action plans in place</li>
+                    </ul>
+
+                    <h3>2. Volunteer Safety</h3>
+                    <p>Volunteers should:</p>
+                    <ul>
+                        <li>Follow all safety instructions provided by organizers</li>
+                        <li>Report any safety concerns immediately</li>
+                        <li>Wear appropriate clothing and safety equipment</li>
+                        <li>Stay within designated work areas</li>
+                        <li>Notify organizers of any medical conditions or limitations</li>
+                    </ul>
+
+                    <h3>3. Online Safety</h3>
+                    <p>To protect yourself online:</p>
+                    <ul>
+                        <li>Never share your password with anyone</li>
+                        <li>Use strong, unique passwords</li>
+                        <li>Be cautious when sharing personal information</li>
+                        <li>Report suspicious activity or accounts</li>
+                        <li>Log out when using shared devices</li>
+                    </ul>
+
+                    <h3>4. Reporting Concerns</h3>
+                    <p>If you encounter safety issues or inappropriate behavior:</p>
+                    <ul>
+                        <li>Report immediately to event organizers or support</li>
+                        <li>Contact support&#64;volunteersync.org for urgent matters</li>
+                        <li>Document incidents with photos or notes when safe to do so</li>
+                        <li>Contact local authorities for emergencies</li>
+                    </ul>
+
+                    <h3>5. Prohibited Activities</h3>
+                    <p>The following activities are strictly prohibited:</p>
+                    <ul>
+                        <li>Harassment, discrimination, or abuse of any kind</li>
+                        <li>Physical violence or threats</li>
+                        <li>Sexual harassment or inappropriate conduct</li>
+                        <li>Substance abuse at events</li>
+                        <li>Any illegal activities</li>
+                    </ul>
+
+                    <h3>6. Consequences</h3>
+                    <p>Violations of safety guidelines may result in:</p>
+                    <ul>
+                        <li>Immediate removal from events</li>
+                        <li>Suspension or termination of accounts</li>
+                        <li>Legal action when appropriate</li>
+                        <li>Reporting to relevant authorities</li>
+                    </ul>
+
+                    <p class="compliance-last-updated">Last Updated: {{ lastUpdatedDate }}</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Data Protection -->
+        <div class="compliance-section card shadow-sm">
+            <div class="compliance-section__header" (click)="toggleSection('data')">
+                <h2><i class="bi bi-database"></i> Data Protection</h2>
+                <i class="bi" [ngClass]="expandedSection === 'data' ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+            </div>
+            <div class="compliance-section__content" [class.expanded]="expandedSection === 'data'">
+                <div class="compliance-section__body">
+                    <p class="compliance-intro">We are committed to protecting your data through industry-standard security practices and responsible data management.</p>
+
+                    <h3>1. Data Encryption</h3>
+                    <p>All sensitive data is encrypted:</p>
+                    <ul>
+                        <li>Passwords are hashed using secure algorithms (never stored in plain text)</li>
+                        <li>Data transmission is protected with HTTPS/TLS encryption</li>
+                        <li>Database connections are secured</li>
+                    </ul>
+
+                    <h3>2. Access Controls</h3>
+                    <p>We implement strict access controls:</p>
+                    <ul>
+                        <li>Role-based access (admin, organizer, volunteer)</li>
+                        <li>Authentication required for all sensitive operations</li>
+                        <li>Regular access audits and reviews</li>
+                        <li>Limited access to personal information</li>
+                    </ul>
+
+                    <h3>3. Data Storage</h3>
+                    <p>Your data is stored securely:</p>
+                    <ul>
+                        <li>In secure, monitored databases</li>
+                        <li>With regular automated backups</li>
+                        <li>Following data retention policies</li>
+                        <li>In compliance with applicable regulations</li>
+                    </ul>
+
+                    <h3>4. Incident Response</h3>
+                    <p>In the event of a data breach:</p>
+                    <ul>
+                        <li>We will notify affected users promptly</li>
+                        <li>We will take immediate steps to contain and address the issue</li>
+                        <li>We will comply with all legal notification requirements</li>
+                        <li>We will work to prevent future incidents</li>
+                    </ul>
+
+                    <h3>5. Third-Party Services</h3>
+                    <p>We carefully vet third-party services and require them to:</p>
+                    <ul>
+                        <li>Maintain appropriate security standards</li>
+                        <li>Comply with data protection agreements</li>
+                        <li>Use data only for specified purposes</li>
+                    </ul>
+
+                    <h3>6. Your Data Rights</h3>
+                    <p>You can:</p>
+                    <ul>
+                        <li>Access all data we have about you</li>
+                        <li>Request corrections to inaccurate information</li>
+                        <li>Request deletion of your account and data</li>
+                        <li>Export your data in a portable format</li>
+                    </ul>
+
+                    <h3>7. Contact Us</h3>
+                    <p>For data protection inquiries, contact:</p>
+                    <ul>
+                        <li>Email: support&#64;volunteersync.org</li>
+                        <li>Subject: "Data Protection Request"</li>
+                    </ul>
+
+                    <p class="compliance-last-updated">Last Updated: {{ lastUpdatedDate }}</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="compliance-help card shadow-sm">
+        <div class="compliance-help__content">
+            <h2>Questions About Our Policies?</h2>
+            <p>If you have questions or concerns about our compliance and safety policies, we're here to help.</p>
+            <div class="compliance-help__actions">
+                <a routerLink="/support" class="btn btn-success btn-lg">
+                    <i class="bi bi-envelope-paper"></i>
+                    Contact Support
+                </a>
+            </div>
+        </div>
+    </section>
+</div>
+

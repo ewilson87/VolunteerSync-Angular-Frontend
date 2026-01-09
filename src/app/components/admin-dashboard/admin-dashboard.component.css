@@ -98,26 +98,73 @@
 }
 
 .admin-tabs {
-    display: inline-flex;
-    gap: 0.75rem;
+    display: flex;
+    gap: 0.5rem;
     background: rgba(31, 125, 96, 0.08);
     border-radius: 999px;
     padding: 0.4rem;
+    flex-wrap: nowrap;
+    align-items: center;
+    overflow-x: auto;
 }
 
 .admin-tabs__button {
     border: none;
     background: transparent;
     border-radius: 999px;
-    padding: 0.5rem 1.4rem;
+    padding: 0.5rem 1.2rem;
     font-weight: 600;
     color: #14533f;
     cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    flex-shrink: 0;
+}
+
+.admin-tabs__button:hover:not(.active) {
+    background: rgba(31, 125, 96, 0.15);
+    color: #1f7d60;
 }
 
 .admin-tabs__button.active {
     background: #1f7d60;
     color: #ffffff;
+}
+
+.admin-tabs__action-button {
+    border: none;
+    background: #1f7d60;
+    color: #ffffff;
+    border-radius: 999px;
+    padding: 0.5rem 1.2rem;
+    font-weight: 600;
+    font-size: 0.95rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+    display: inline-flex;
+    align-items: center;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.admin-tabs__action-button:hover:not(:disabled) {
+    background: #14533f;
+    border-color: #14533f;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(31, 125, 96, 0.2);
+}
+
+.admin-tabs__action-button:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    transform: none;
+}
+
+.admin-tabs__action-button .spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 2px;
 }
 
 .admin-card {
@@ -233,10 +280,24 @@
     align-items: flex-end;
 }
 
+.admin-filters__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: flex-end;
+    width: 100%;
+}
+
 .admin-filter {
     display: flex;
     flex-direction: column;
     gap: 0.35rem;
+    flex: 0 1 auto;
+}
+
+.admin-filter--search {
+    flex: 1 1 200px;
+    min-width: 200px;
 }
 
 .admin-filter label {
@@ -433,6 +494,54 @@
     border-color: rgba(31, 125, 96, 0.15);
 }
 
+.admin-modal__content--large {
+    max-width: 800px;
+}
+
+.admin-modal__audit-details {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    margin: 1.5rem 0;
+}
+
+.admin-modal__audit-row {
+    display: grid;
+    grid-template-columns: 150px 1fr;
+    gap: 1rem;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid rgba(31, 125, 96, 0.1);
+}
+
+.admin-modal__audit-row:last-child {
+    border-bottom: none;
+}
+
+.admin-modal__audit-row--full {
+    grid-template-columns: 1fr;
+    gap: 0.5rem;
+}
+
+.admin-modal__audit-row strong {
+    color: #14533f;
+    font-weight: 600;
+}
+
+.admin-modal__audit-details-json {
+    background: #f8f9fa;
+    border: 1px solid rgba(31, 125, 96, 0.15);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    margin: 0;
+    font-size: 0.85rem;
+    font-family: 'Courier New', monospace;
+    color: #215f49;
+    max-height: 400px;
+    overflow-y: auto;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+}
+
 @media (max-width: 767.98px) {
     .admin-page .card:hover {
         transform: none;
@@ -444,4 +553,259 @@
         flex-direction: column;
         align-items: flex-start;
     }
+
+    .admin-modal__content--large {
+        max-width: 95%;
+    }
+
+    .admin-modal__audit-row {
+        grid-template-columns: 1fr;
+        gap: 0.5rem;
+    }
+
+    .admin-filters__row {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-filter--search {
+        flex: 1 1 100%;
+        min-width: 100%;
+    }
+
+    .admin-metrics__summary {
+        grid-template-columns: 1fr;
+    }
+
+    .admin-metrics__controls {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-metrics__control-group {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .admin-metrics__control-group select {
+        width: 100%;
+    }
+
+    .admin-metrics__stats {
+        flex-direction: column;
+    }
+
+    .chart-container {
+        height: 250px;
+    }
+}
+
+/* Admin Metrics Section Styles */
+.admin-metrics {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.admin-metrics__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.admin-metrics__card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 1rem;
+    padding: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-metrics__card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 8px 16px rgba(31, 125, 96, 0.15);
+}
+
+.admin-metrics__card-icon {
+    width: 3.5rem;
+    height: 3.5rem;
+    background: linear-gradient(135deg, #2f7d60 0%, #1f8a62 100%);
+    border-radius: 0.75rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-size: 1.5rem;
+    flex-shrink: 0;
+}
+
+.admin-metrics__card-content h3 {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #14533f;
+    margin: 0;
+    line-height: 1;
+}
+
+.admin-metrics__card-content p {
+    font-size: 0.9rem;
+    color: #6c757d;
+    margin: 0.5rem 0 0;
+}
+
+.admin-metrics__card-content small {
+    display: block;
+    font-size: 0.8rem;
+    color: #868e96;
+    margin-top: 0.25rem;
+}
+
+.admin-metrics__stats {
+    display: flex;
+    gap: 2rem;
+    flex-wrap: wrap;
+    padding: 1.5rem;
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+}
+
+.admin-metrics__stat-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.admin-metrics__stat-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.admin-metrics__stat-value {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #14533f;
+}
+
+.admin-metrics__export {
+    display: flex;
+    gap: 1rem;
+    justify-content: flex-end;
+    margin-bottom: 1rem;
+}
+
+.admin-metrics__export .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.admin-metrics__controls {
+    display: flex;
+    gap: 1.5rem;
+    align-items: center;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: #f8f9fa;
+    border-radius: 0.75rem;
+}
+
+.admin-metrics__control-group {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.admin-metrics__control-group label {
+    font-weight: 600;
+    color: #215f49;
+    font-size: 0.9rem;
+}
+
+.admin-metrics__control-group select {
+    min-width: 150px;
+}
+
+.admin-metrics__charts {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.admin-metrics__chart {
+    background: #ffffff;
+    border: 1px solid rgba(31, 125, 96, 0.15);
+    border-radius: 1rem;
+    padding: 1.5rem;
+}
+
+.admin-metrics__chart h3 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: #14533f;
+    margin-bottom: 1.5rem;
+}
+
+.chart-container {
+    position: relative;
+    height: 350px;
+    width: 100%;
+}
+
+.admin-metrics__active-users {
+    margin-bottom: 2rem;
+    padding: 1.5rem;
+    background: rgba(31, 125, 96, 0.05);
+    border-radius: 1rem;
+    border: 1px solid rgba(31, 125, 96, 0.15);
+}
+
+.admin-metrics__active-users h3 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: #14533f;
+    margin-bottom: 1.5rem;
+}
+
+.admin-metrics__active-users-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+}
+
+.admin-metrics__active-user-card {
+    background: #ffffff;
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+    border: 1px solid rgba(31, 125, 96, 0.12);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.admin-metrics__active-user-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.admin-metrics__active-user-label {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem;
+}
+
+.admin-metrics__active-user-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: #1f7d60;
+    margin-bottom: 0.5rem;
+}
+
+.admin-metrics__active-user-percentage {
+    font-size: 0.9rem;
+    color: #6c757d;
 }

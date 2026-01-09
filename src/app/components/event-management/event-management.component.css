@@ -1,0 +1,218 @@
+/* Tags Multi-Select Dropdown Styles */
+.event-mgmt-tags-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.event-mgmt-tags-selected {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.event-mgmt-tags-label {
+    font-weight: 600;
+    color: #2d3748;
+    font-size: 0.9rem;
+    margin: 0;
+}
+
+.event-mgmt-tags-badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.event-mgmt-tag-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem 0.75rem;
+    background: linear-gradient(135deg, #0f766e 0%, #16a34a 100%);
+    color: #ffffff;
+    border-radius: 20px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(15, 118, 110, 0.2);
+}
+
+.event-mgmt-tag-remove {
+    background: rgba(255, 255, 255, 0.2);
+    border: none;
+    border-radius: 50%;
+    width: 18px;
+    height: 18px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    padding: 0;
+    color: #ffffff;
+    font-size: 0.75rem;
+    transition: background-color 0.2s ease;
+}
+
+.event-mgmt-tag-remove:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.event-mgmt-tags-dropdown-wrapper {
+    position: relative;
+}
+
+.event-mgmt-tags-dropdown-toggle {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    background: #ffffff;
+    border: 2px solid rgba(15, 118, 110, 0.25);
+    border-radius: 12px;
+    font-size: 1rem;
+    color: #2d3748;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-align: left;
+}
+
+.event-mgmt-tags-dropdown-toggle:hover {
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+.event-mgmt-tags-dropdown-toggle:focus {
+    outline: none;
+    border-color: rgba(16, 185, 129, 0.65);
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.event-mgmt-tags-dropdown-toggle i:first-child {
+    color: #047857;
+    font-size: 1.1rem;
+}
+
+.event-mgmt-tags-dropdown-toggle i:last-child {
+    color: #64748b;
+    font-size: 0.9rem;
+    transition: transform 0.2s ease;
+}
+
+.event-mgmt-tags-dropdown {
+    position: absolute;
+    top: calc(100% + 0.5rem);
+    left: 0;
+    right: 0;
+    background: #ffffff;
+    border: 2px solid rgba(15, 118, 110, 0.25);
+    border-radius: 12px;
+    box-shadow: 0 8px 24px rgba(15, 118, 110, 0.15);
+    z-index: 1000;
+    max-height: 300px;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.event-mgmt-tags-search {
+    position: relative;
+    padding: 0.75rem;
+    border-bottom: 1px solid rgba(15, 118, 110, 0.1);
+}
+
+.event-mgmt-tags-search i {
+    position: absolute;
+    left: 1.25rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.event-mgmt-tags-search input {
+    width: 100%;
+    padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+    border: 1px solid rgba(15, 118, 110, 0.2);
+    border-radius: 8px;
+    font-size: 0.9rem;
+    transition: border-color 0.2s ease;
+}
+
+.event-mgmt-tags-search input:focus {
+    outline: none;
+    border-color: rgba(16, 185, 129, 0.5);
+    box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.1);
+}
+
+.event-mgmt-tags-list {
+    max-height: 200px;
+    overflow-y: auto;
+    padding: 0.5rem;
+}
+
+.event-mgmt-tags-list::-webkit-scrollbar {
+    width: 6px;
+}
+
+.event-mgmt-tags-list::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.event-mgmt-tags-list::-webkit-scrollbar-thumb {
+    background: rgba(15, 118, 110, 0.3);
+    border-radius: 3px;
+}
+
+.event-mgmt-tags-list::-webkit-scrollbar-thumb:hover {
+    background: rgba(15, 118, 110, 0.5);
+}
+
+.event-mgmt-tags-empty {
+    padding: 1rem;
+    text-align: center;
+    color: #64748b;
+    font-size: 0.9rem;
+}
+
+.event-mgmt-tags-option {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+    user-select: none;
+}
+
+.event-mgmt-tags-option:hover {
+    background: rgba(16, 185, 129, 0.1);
+}
+
+.event-mgmt-tags-option input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+    accent-color: #0f766e;
+    flex-shrink: 0;
+}
+
+.event-mgmt-tags-option span {
+    flex: 1;
+    color: #2d3748;
+    font-size: 0.95rem;
+}
+
+@media (max-width: 768px) {
+    .event-mgmt-tags-dropdown {
+        max-height: 250px;
+    }
+    
+    .event-mgmt-tags-list {
+        max-height: 180px;
+    }
+}
+

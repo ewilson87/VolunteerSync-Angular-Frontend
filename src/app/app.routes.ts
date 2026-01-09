@@ -12,6 +12,8 @@ import { AdminDashboardComponent } from './components/admin-dashboard/admin-dash
 import { EventManagementComponent } from './components/event-management/event-management.component';
 import { authGuard, organizerGuard, adminGuard } from './guards/auth.guard';
 import { SupportComponent } from './components/support/support.component';
+import { KnowledgeBaseComponent } from './components/knowledge-base/knowledge-base.component';
+import { ComplianceComponent } from './components/compliance/compliance.component';
 import { NotFoundComponent } from './components/not-found/not-found.component';
 import { ServerErrorComponent } from './components/server-error/server-error.component';
 import { UnauthorizedComponent } from './components/unauthorized/unauthorized.component';
@@ -36,6 +38,8 @@ export const routes: Routes = [
     },
     { path: 'organizations', component: OrganizationListComponent },
     { path: 'support', component: SupportComponent },
+    { path: 'knowledge-base', component: KnowledgeBaseComponent },
+    { path: 'compliance', component: ComplianceComponent },
     { path: 'verify', component: VerifyCertificateComponent },
 
     // Organizer Dashboard Routes

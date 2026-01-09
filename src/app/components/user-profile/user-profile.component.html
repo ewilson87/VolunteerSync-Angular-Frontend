@@ -8,6 +8,18 @@
                 </div>
                 <h1>{{ user.firstName }} {{ user.lastName }}</h1>
                 <p class="profile-hero__subtitle">{{ user.email }}</p>
+                <div class="profile-hero__meta">
+                    <div class="profile-hero__meta-item" *ngIf="user.lastLogin">
+                        <i class="bi bi-clock-history"></i>
+                        <span class="profile-hero__meta-label">Last Login:</span>
+                        <span class="profile-hero__meta-value">{{ user.lastLogin | date:'medium' }}</span>
+                    </div>
+                    <div class="profile-hero__meta-item">
+                        <i class="bi" [ngClass]="user.role === 'organizer' ? 'bi-building' : 'bi-person-badge'"></i>
+                        <span class="profile-hero__meta-label">Role:</span>
+                        <span class="profile-hero__meta-value">{{ user.role | titlecase }}</span>
+                    </div>
+                </div>
                 <div class="profile-hero__stats">
                     <div>
                         <span class="profile-hero__stats-label">Member Since </span>
@@ -23,134 +35,144 @@
                         <span class="profile-hero__stats-value">{{ pastEvents.length }}</span>
                     </div>
                 </div>
+                <div class="profile-hero__actions" *ngIf="canEditProfile">
+                    <button class="profile-hero__action-btn profile-hero__action-btn--primary" 
+                        (click)="startEditingProfile()"
+                        *ngIf="!isEditingProfile">
+                        <i class="bi bi-pencil me-2"></i>Edit Profile
+                    </button>
+                    <button class="profile-hero__action-btn profile-hero__action-btn--secondary" 
+                        (click)="showChangePassword()"
+                        *ngIf="!showPasswordChange">
+                        <i class="bi bi-key me-2"></i>Change Password
+                    </button>
+                </div>
             </div>
-            <div class="profile-hero__actions">
-                <button class="btn btn-outline-light" (click)="startEditingProfile()"
-                    *ngIf="canEditProfile && !isEditingProfile">Edit Profile</button>
-                <button class="btn btn-light" (click)="showChangePassword()"
-                    *ngIf="canEditProfile && !showPasswordChange">Change Password</button>
+            <div class="profile-hero__tools" *ngIf="isOrganizer && !isViewingOtherUser">
+                <div class="profile-hero__tools-content">
+                    <h3 class="profile-hero__tools-title">
+                        <i class="bi bi-speedometer2 me-2"></i>Organizer Tools
+                    </h3>
+                    <p class="profile-hero__tools-description">Manage your organization and events through the dedicated dashboard.</p>
+                    <a routerLink="/organizer" class="profile-hero__tools-link">
+                        <i class="bi bi-speedometer2 me-2"></i>Go to Organizer Dashboard
+                    </a>
+                </div>
             </div>
         </section>
 
-        <section class="profile-content">
-            <div class="profile-columns">
-                <div class="profile-card card shadow-sm">
-                    <h2>Personal Information</h2>
+        <!-- Error and Success Alerts -->
+        <div *ngIf="error" class="profile-alert profile-alert--error">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
+        </div>
+        <div *ngIf="success" class="profile-alert profile-alert--success">
+            <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
+        </div>
 
-                    <div *ngIf="error" class="profile-alert profile-alert--error">
-                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ error }}
-                    </div>
-                    <div *ngIf="success" class="profile-alert profile-alert--success">
-                        <i class="bi bi-check-circle-fill me-2"></i>{{ success }}
-                    </div>
-
-                    <div *ngIf="!isEditingProfile; else editProfileForm" class="profile-summary">
-                        <dl>
-                            <div>
-                                <dt>Name</dt>
-                                <dd>{{ user.firstName }} {{ user.lastName }}</dd>
-                            </div>
-                            <div>
-                                <dt>Email</dt>
-                                <dd>{{ user.email }}</dd>
-                            </div>
-                            <div>
-                                <dt>Role</dt>
-                                <dd>{{ user.role | titlecase }}</dd>
-                            </div>
-                            <div *ngIf="user.lastLogin">
-                                <dt>Last Login</dt>
-                                <dd>{{ user.lastLogin | date:'medium' }}</dd>
-                            </div>
-                        </dl>
-                        <button class="btn btn-outline-success" (click)="startEditingProfile()"
-                            *ngIf="canEditProfile">Edit Profile</button>
-                    </div>
-
-                    <ng-template #editProfileForm>
-                        <form (ngSubmit)="saveProfile()" class="profile-form">
-                            <div class="profile-field">
-                                <label for="firstName">First Name</label>
-                                <input type="text" id="firstName" [(ngModel)]="editableUser!.firstName" name="firstName"
-                                    maxlength="50" required>
-                            </div>
-                            <div class="profile-field">
-                                <label for="lastName">Last Name</label>
-                                <input type="text" id="lastName" [(ngModel)]="editableUser!.lastName" name="lastName"
-                                    maxlength="50" required>
-                            </div>
-                            <div class="profile-field">
-                                <label for="email">Email</label>
-                                <input type="email" id="email" [(ngModel)]="editableUser!.email" name="email"
-                                    maxlength="100" required>
-                            </div>
-
-                            <div class="profile-actions">
-                                <button type="button" class="btn btn-outline-secondary"
-                                    (click)="cancelEditingProfile()">Cancel</button>
-                                <button type="submit" class="btn btn-success">Save Changes</button>
-                            </div>
-                        </form>
-                    </ng-template>
-
-                    <div class="profile-password" *ngIf="canEditProfile && showPasswordChange">
-                        <h3>Change Password</h3>
-                        <div *ngIf="passwordError" class="profile-alert profile-alert--error">
-                            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ passwordError }}
-                        </div>
-                        <form (ngSubmit)="saveNewPassword()" class="profile-form">
-                            <div class="profile-field">
-                                <label for="currentPassword">Current Password</label>
-                                <input type="password" id="currentPassword" [(ngModel)]="currentPassword"
-                                    name="currentPassword" required>
-                            </div>
-                            <div class="profile-field">
-                                <label for="newPassword">New Password</label>
-                                <input type="password" id="newPassword" [(ngModel)]="newPassword" name="newPassword"
-                                    maxlength="100" minlength="8" required>
-                                <small class="form-text">
-                                    <strong>Password Requirements:</strong><br>
-                                    • Must be between 8 and 100 characters<br>
-                                    • Must contain at least one uppercase letter (A-Z)<br>
-                                    • Must contain at least one lowercase letter (a-z)<br>
-                                    • Must contain at least one number (0-9)<br>
-                                    • Must contain at least one special character (&#64;$!%*?&)
-                                </small>
-                            </div>
-                            <div class="profile-field">
-                                <label for="confirmPassword">Confirm New Password</label>
-                                <input type="password" id="confirmPassword" [(ngModel)]="confirmPassword"
-                                    name="confirmPassword" maxlength="100" required>
-                            </div>
-                            <div class="profile-actions">
-                                <button type="button" class="btn btn-outline-secondary"
-                                    (click)="cancelChangePassword()">Cancel</button>
-                                <button type="submit" class="btn btn-success">Update Password</button>
-                            </div>
-                        </form>
-                    </div>
+        <!-- Edit Profile Form -->
+        <section class="profile-edit-section card shadow-sm" *ngIf="isEditingProfile && editableUser">
+            <h2>Edit Profile</h2>
+            <form (ngSubmit)="saveProfile()" class="profile-form">
+                <div class="profile-field">
+                    <label for="firstName">First Name</label>
+                    <input type="text" id="firstName" [(ngModel)]="editableUser.firstName" name="firstName"
+                        maxlength="50" required>
+                </div>
+                <div class="profile-field">
+                    <label for="lastName">Last Name</label>
+                    <input type="text" id="lastName" [(ngModel)]="editableUser.lastName" name="lastName"
+                        maxlength="50" required>
+                </div>
+                <div class="profile-field">
+                    <label for="email">Email</label>
+                    <input type="email" id="email" [(ngModel)]="editableUser.email" name="email"
+                        maxlength="100" required>
                 </div>
 
-                <div class="profile-card card shadow-sm" *ngIf="isOrganizer && !isViewingOtherUser">
-                    <h2>Organizer Tools</h2>
-                    <p class="profile-card__description">Manage your organization and events through the dedicated
-                        dashboard.</p>
-                    <div class="profile-card__actions">
-                        <a routerLink="/organizer" class="btn btn-outline-success">
-                            <i class="bi bi-speedometer2 me-2"></i>Go to Organizer Dashboard
-                        </a>
-                    </div>
+                <div class="profile-actions">
+                    <button type="button" class="btn btn-outline-secondary"
+                        (click)="cancelEditingProfile()">Cancel</button>
+                    <button type="submit" class="btn btn-success">Save Changes</button>
                 </div>
+            </form>
+        </section>
+
+        <!-- Change Password Form -->
+        <section class="profile-password-section card shadow-sm" *ngIf="showPasswordChange">
+            <h2>Change Password</h2>
+            <div *ngIf="passwordError" class="profile-alert profile-alert--error">
+                <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ passwordError }}
             </div>
+            <form (ngSubmit)="saveNewPassword()" class="profile-form">
+                <div class="profile-field">
+                    <label for="currentPassword">Current Password</label>
+                    <input type="password" id="currentPassword" [(ngModel)]="currentPassword"
+                        name="currentPassword" required>
+                </div>
+                <div class="profile-field">
+                    <label for="newPassword">New Password</label>
+                    <input type="password" id="newPassword" [(ngModel)]="newPassword" name="newPassword"
+                        maxlength="100" minlength="8" required (input)="validatePasswordRequirements()">
+                    <div class="password-requirements">
+                        <strong>Password Requirements:</strong>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.length}">
+                            <i class="bi" [ngClass]="passwordRequirements.length ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must be between 8 and 100 characters</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.uppercase}">
+                            <i class="bi" [ngClass]="passwordRequirements.uppercase ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one uppercase letter (A-Z)</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.lowercase}">
+                            <i class="bi" [ngClass]="passwordRequirements.lowercase ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one lowercase letter (a-z)</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.number}">
+                            <i class="bi" [ngClass]="passwordRequirements.number ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one number (0-9)</span>
+                        </div>
+                        <div class="password-requirement-item" [ngClass]="{'requirement-met': passwordRequirements.special}">
+                            <i class="bi" [ngClass]="passwordRequirements.special ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                            <span>Must contain at least one special character (&#64;$!%*?&)</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="profile-field">
+                    <label for="confirmPassword">Confirm New Password</label>
+                    <input type="password" id="confirmPassword" [(ngModel)]="confirmPassword"
+                        name="confirmPassword" maxlength="100" required (input)="checkPasswordsMatch()">
+                    <div class="password-match-feedback" *ngIf="confirmPassword">
+                        <i class="bi" [ngClass]="passwordsMatch ? 'bi-check-circle-fill text-success' : 'bi-x-circle text-danger'"></i>
+                        <span [ngClass]="passwordsMatch ? 'text-success' : 'text-danger'">
+                            {{ passwordsMatch ? 'Passwords match' : 'Passwords do not match' }}
+                        </span>
+                    </div>
+                </div>
+                <div class="profile-actions">
+                    <button type="button" class="btn btn-outline-secondary"
+                        (click)="cancelChangePassword()">Cancel</button>
+                    <button type="submit" class="btn btn-success">Update Password</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="profile-content">
 
             <div class="profile-events card shadow-sm">
                 <div class="profile-events__header">
-                    <div>
-                        <h2>My Event Registrations</h2>
-                        <p>Review upcoming commitments and completed events.</p>
+                    <div class="profile-events__header-content">
+                        <button type="button" class="profile-events__toggle" (click)="eventsSectionExpanded = !eventsSectionExpanded" [attr.aria-expanded]="eventsSectionExpanded">
+                            <i class="bi me-2" [ngClass]="eventsSectionExpanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                            <div class="profile-events__header-text">
+                                <h2>Event Registrations</h2>
+                                <p>Review upcoming commitments and completed events.</p>
+                            </div>
+                        </button>
                     </div>
                     <a routerLink="/events" class="btn btn-outline-success">Browse More Events</a>
                 </div>
+
+                <div *ngIf="eventsSectionExpanded">
 
                 <div class="profile-alert profile-alert--muted" *ngIf="loadingEvents">
                     <div class="spinner-border text-success" role="status">
@@ -166,11 +188,11 @@
                 <div class="profile-tabs" *ngIf="!loadingEvents">
                     <div class="profile-tabs__nav">
                         <button type="button" class="profile-tabs__button"
-                            [class.active]="activeEventTab === 'upcoming'" (click)="activeEventTab = 'upcoming'">
+                            [class.active]="activeEventTab === 'upcoming'" (click)="setActiveEventTab('upcoming')">
                             Upcoming ({{ upcomingEvents.length }})
                         </button>
                         <button type="button" class="profile-tabs__button" [class.active]="activeEventTab === 'past'"
-                            (click)="activeEventTab = 'past'">
+                            (click)="setActiveEventTab('past')">
                             Past ({{ pastEvents.length }})
                         </button>
                     </div>
@@ -179,7 +201,7 @@
                         <div *ngIf="activeEventTab === 'upcoming'">
                             <ng-container *ngIf="upcomingEvents.length > 0; else noUpcoming">
                                 <div class="profile-event-list">
-                                    <div class="profile-event" *ngFor="let event of upcomingEvents">
+                                    <div class="profile-event" *ngFor="let event of paginatedUpcomingEvents">
                                         <div class="profile-event__body">
                                             <h3>{{ event.title }}</h3>
                                             <p>{{ event.description }}</p>
@@ -211,7 +233,7 @@
                         <div *ngIf="activeEventTab === 'past'">
                             <ng-container *ngIf="pastEvents.length > 0; else noPast">
                                 <div class="profile-event-list">
-                                    <div class="profile-event profile-event--past" *ngFor="let event of pastEvents">
+                                    <div class="profile-event profile-event--past" *ngFor="let event of paginatedPastEvents">
                                         <div class="profile-event__body">
                                             <h3>{{ event.title }}</h3>
                                             <p>{{ event.description }}</p>
@@ -236,12 +258,43 @@
                             </ng-template>
                         </div>
                     </div>
+
+                    <!-- Events Pagination -->
+                    <div class="profile-pagination" *ngIf="(activeEventTab === 'upcoming' && upcomingEvents.length > eventsPageSize) || (activeEventTab === 'past' && pastEvents.length > eventsPageSize)">
+                        <div class="profile-pagination__size">
+                            <label for="eventsPageSize">Show</label>
+                            <select id="eventsPageSize" [(ngModel)]="eventsPageSize" (ngModelChange)="changeEventsPageSize($event)">
+                                <option *ngFor="let size of eventsPageSizeOptions" [value]="size">{{ size }}</option>
+                            </select>
+                            <span>per page</span>
+                        </div>
+                        <div class="profile-pagination__controls">
+                            <button class="btn btn-outline-success btn-sm" (click)="goToEventsPage(eventsCurrentPage - 1)"
+                                [disabled]="eventsCurrentPage === 1">Prev</button>
+                            <button *ngFor="let page of eventsPageNumbers" class="btn btn-sm profile-pagination__button"
+                                [ngClass]="{'btn-success text-white': page === eventsCurrentPage, 'btn-outline-success': page !== eventsCurrentPage}"
+                                (click)="goToEventsPage(page)">{{ page }}</button>
+                            <button class="btn btn-outline-success btn-sm" (click)="goToEventsPage(eventsCurrentPage + 1)"
+                                [disabled]="eventsCurrentPage === eventsTotalPages">Next</button>
+                        </div>
+                    </div>
                 </div>
+                </div>
+            </div>
 
                 <!-- Certificates Section -->
                 <div class="profile-card card shadow-sm">
-                    <h2>My Certificates</h2>
-                    <p class="profile-card__subtitle">View and download your volunteer service certificates</p>
+                    <div class="profile-card__header">
+                        <button type="button" class="profile-card__toggle" (click)="certificatesSectionExpanded = !certificatesSectionExpanded" [attr.aria-expanded]="certificatesSectionExpanded">
+                            <i class="bi me-2" [ngClass]="certificatesSectionExpanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                            <div class="profile-card__header-text">
+                                <h2>Certificates</h2>
+                                <p class="profile-card__subtitle">View and download your volunteer service certificates</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div *ngIf="certificatesSectionExpanded">
 
                     <div *ngIf="certificatesError" class="profile-alert profile-alert--error">
                         <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ certificatesError }}
@@ -314,10 +367,479 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Certificates Pagination -->
+                    <div class="profile-pagination" *ngIf="userCertificates.length > certificatesPageSize">
+                        <div class="profile-pagination__size">
+                            <label for="certificatesPageSize">Show</label>
+                            <select id="certificatesPageSize" [(ngModel)]="certificatesPageSize" (ngModelChange)="changeCertificatesPageSize($event)">
+                                <option *ngFor="let size of certificatesPageSizeOptions" [value]="size">{{ size }}</option>
+                            </select>
+                            <span>per page</span>
+                        </div>
+                        <div class="profile-pagination__controls">
+                            <button class="btn btn-outline-success btn-sm" (click)="goToCertificatesPage(certificatesCurrentPage - 1)"
+                                [disabled]="certificatesCurrentPage === 1">Prev</button>
+                            <button *ngFor="let page of certificatesPageNumbers" class="btn btn-sm profile-pagination__button"
+                                [ngClass]="{'btn-success text-white': page === certificatesCurrentPage, 'btn-outline-success': page !== certificatesCurrentPage}"
+                                (click)="goToCertificatesPage(page)">{{ page }}</button>
+                            <button class="btn btn-outline-success btn-sm" (click)="goToCertificatesPage(certificatesCurrentPage + 1)"
+                                [disabled]="certificatesCurrentPage === certificatesTotalPages">Next</button>
+                        </div>
+                    </div>
+                    </div>
                 </div>
-            </div>
+
+                <!-- Followed Organizations Section -->
+                <div class="profile-card card shadow-sm">
+                    <div class="profile-card__header">
+                        <button type="button" class="profile-card__toggle" (click)="followedOrganizationsSectionExpanded = !followedOrganizationsSectionExpanded" [attr.aria-expanded]="followedOrganizationsSectionExpanded">
+                            <i class="bi me-2" [ngClass]="followedOrganizationsSectionExpanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                            <div class="profile-card__header-text">
+                                <h2>Followed Organizations</h2>
+                                <p class="profile-card__subtitle">Organizations you follow</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div *ngIf="followedOrganizationsSectionExpanded">
+                        <div *ngIf="followedOrganizationsError" class="profile-alert profile-alert--error">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ followedOrganizationsError }}
+                        </div>
+
+                        <div *ngIf="loadingFollowedOrganizations" class="profile-loading">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p>Loading followed organizations…</p>
+                        </div>
+
+                        <div *ngIf="!loadingFollowedOrganizations">
+                            <div *ngIf="followedOrganizations.length === 0" class="profile-alert profile-alert--muted">
+                                <i class="bi bi-info-circle me-2"></i>You're not following any organizations yet. Visit an event page to follow organizations you're interested in.
+                            </div>
+
+                            <div *ngIf="followedOrganizations.length > 0">
+                                <div class="profile-organization-list">
+                                    <div class="profile-organization" *ngFor="let org of followedOrganizations">
+                                        <div class="profile-organization__body">
+                                            <h3>{{ org.organizationName }}</h3>
+                                            <p>{{ org.organizationDescription }}</p>
+                                            <div class="profile-organization__meta">
+                                                <span><i class="bi bi-envelope"></i>{{ org.organizationContactEmail }}</span>
+                                                <span *ngIf="org.organizationWebsite">
+                                                    <i class="bi bi-globe"></i>
+                                                    <a [href]="org.organizationWebsite" target="_blank" rel="noopener">Visit Website</a>
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="profile-organization__actions">
+                                            <a [routerLink]="['/events']" [queryParams]="{organizationId: org.organizationId}" class="btn btn-outline-success btn-sm">
+                                                <i class="bi bi-calendar-event me-1"></i>View Events
+                                            </a>
+                                            <button class="btn btn-outline-danger btn-sm" (click)="unfollowOrganization(org.organizationId)">
+                                                <i class="bi bi-heartbreak me-1"></i>Unfollow
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Followed Tags Section -->
+                <div class="profile-card card shadow-sm">
+                    <div class="profile-card__header">
+                        <button type="button" class="profile-card__toggle" (click)="followedTagsSectionExpanded = !followedTagsSectionExpanded" [attr.aria-expanded]="followedTagsSectionExpanded">
+                            <i class="bi me-2" [ngClass]="followedTagsSectionExpanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                            <div class="profile-card__header-text">
+                                <h2>Followed Tags</h2>
+                                <p class="profile-card__subtitle">Tags you follow to discover relevant events</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div *ngIf="followedTagsSectionExpanded">
+                        <div *ngIf="followedTagsError" class="profile-alert profile-alert--error">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ followedTagsError }}
+                        </div>
+
+                        <div *ngIf="loadingFollowedTags" class="profile-loading">
+                            <div class="spinner-border text-success" role="status">
+                                <span class="visually-hidden">Loading...</span>
+                            </div>
+                            <p>Loading tags…</p>
+                        </div>
+
+                        <div *ngIf="!loadingFollowedTags">
+                            <!-- Selected Tags -->
+                            <div *ngIf="followedTags.length > 0" class="profile-tags-selected mb-3">
+                                <h4>Tags You Follow</h4>
+                                <div class="profile-tags-list">
+                                    <div class="profile-tag-item" *ngFor="let tag of followedTags">
+                                        <span class="badge bg-success me-2">{{ tag.tagName }}</span>
+                                        <a [routerLink]="['/events']" [queryParams]="{tagId: tag.tagId}" class="btn btn-outline-success btn-sm">
+                                            <i class="bi bi-calendar-event me-1"></i>View Events
+                                        </a>
+                                        <button type="button" class="btn btn-outline-danger btn-sm ms-2" (click)="toggleFollowTag(tag.tagId)">
+                                            <i class="bi bi-heartbreak me-1"></i>Unfollow
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Tag Selection Dropdown -->
+                            <div class="profile-tags-dropdown-wrapper">
+                                <label for="tagSearchQuery">Add Tags to Follow</label>
+                                <div class="profile-tags-dropdown">
+                                    <input 
+                                        type="text" 
+                                        id="tagSearchQuery"
+                                        name="tagSearchQuery"
+                                        [(ngModel)]="tagSearchQuery" 
+                                        (focus)="tagsDropdownOpen = true"
+                                        placeholder="Search for tags..."
+                                        class="form-control">
+                                    
+                                    <div class="profile-tags-dropdown-menu" *ngIf="tagsDropdownOpen && filteredTagsForFollowing.length > 0">
+                                        <div 
+                                            class="profile-tags-dropdown-item" 
+                                            *ngFor="let tag of filteredTagsForFollowing"
+                                            (click)="toggleFollowTag(tag.tagId); tagsDropdownOpen = false; tagSearchQuery = ''">
+                                            <i class="bi bi-plus-circle me-2"></i>{{ tag.name }}
+                                        </div>
+                                    </div>
+                                    <div class="profile-tags-dropdown-menu" *ngIf="tagsDropdownOpen && filteredTagsForFollowing.length === 0 && tagSearchQuery.trim()">
+                                        <div class="profile-tags-dropdown-item profile-tags-dropdown-item--muted">
+                                            No tags found matching "{{ tagSearchQuery }}"
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div *ngIf="followedTags.length === 0 && !tagsDropdownOpen" class="profile-alert profile-alert--muted mt-3">
+                                <i class="bi bi-info-circle me-2"></i>Start following tags to discover events that match your interests.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Volunteer Metrics Section -->
+                <div class="profile-card card shadow-sm" *ngIf="user?.role === 'volunteer'">
+                    <div class="profile-card__header">
+                        <button type="button" class="profile-card__toggle" (click)="metricsSectionExpanded = !metricsSectionExpanded" [attr.aria-expanded]="metricsSectionExpanded">
+                            <i class="bi me-2" [ngClass]="metricsSectionExpanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                            <div class="profile-card__header-text">
+                                <h2>Volunteer Metrics</h2>
+                                <p class="profile-card__subtitle">Track your volunteer service statistics and progress</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div *ngIf="metricsSectionExpanded">
+
+                    <div *ngIf="metricsError" class="profile-alert profile-alert--error">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ metricsError }}
+                    </div>
+
+                    <div *ngIf="loadingMetrics" class="profile-loading">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Loading metrics…</p>
+                    </div>
+
+                    <div *ngIf="!loadingMetrics && volunteerMetrics" class="profile-metrics">
+                        <!-- Export Buttons -->
+                        <div class="profile-metrics__export">
+                            <button class="btn btn-success btn-sm" (click)="downloadMetricsAsPDF()">
+                                <i class="bi bi-file-pdf me-1"></i>Download PDF
+                            </button>
+                            <button class="btn btn-success btn-sm" (click)="downloadMetricsAsExcel()">
+                                <i class="bi bi-file-excel me-1"></i>Download Excel
+                            </button>
+                        </div>
+                        <!-- Summary Cards -->
+                        <div class="profile-metrics__summary">
+                            <div class="profile-metrics__card">
+                                <div class="profile-metrics__card-icon">
+                                    <i class="bi bi-calendar-check"></i>
+                                </div>
+                                <div class="profile-metrics__card-content">
+                                    <h3>{{ volunteerMetrics.totalEventsRegistered }}</h3>
+                                    <p>Total Events Registered</p>
+                                </div>
+                            </div>
+                            <div class="profile-metrics__card">
+                                <div class="profile-metrics__card-icon">
+                                    <i class="bi bi-check-circle"></i>
+                                </div>
+                                <div class="profile-metrics__card-content">
+                                    <h3>{{ volunteerMetrics.totalEventsAttended }}</h3>
+                                    <p>Events Attended</p>
+                                </div>
+                            </div>
+                            <div class="profile-metrics__card">
+                                <div class="profile-metrics__card-icon">
+                                    <i class="bi bi-clock-history"></i>
+                                </div>
+                                <div class="profile-metrics__card-content">
+                                    <h3>{{ volunteerMetrics.totalHoursAttended }}</h3>
+                                    <p>Total Hours</p>
+                                </div>
+                            </div>
+                            <div class="profile-metrics__card">
+                                <div class="profile-metrics__card-icon">
+                                    <i class="bi bi-calendar-event"></i>
+                                </div>
+                                <div class="profile-metrics__card-content">
+                                    <h3>{{ volunteerMetrics.upcomingEventsCount }}</h3>
+                                    <p>Upcoming Events</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Chart Controls -->
+                        <div class="profile-metrics__controls">
+                            <div class="profile-metrics__control-group">
+                                <label>Chart Type:</label>
+                                <select [(ngModel)]="selectedChartType" class="form-select form-select-sm">
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="line">Line Chart</option>
+                                    <option value="pie">Pie Chart</option>
+                                </select>
+                            </div>
+                            <div class="profile-metrics__control-group" *ngIf="selectedChartType !== 'pie'">
+                                <label>Metric:</label>
+                                <select [(ngModel)]="selectedMetricChart" class="form-select form-select-sm">
+                                    <option value="events">Events Attended</option>
+                                    <option value="hours">Hours Attended</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Charts -->
+                        <div class="profile-metrics__charts">
+                            <!-- Event Attendance Pie Chart -->
+                            <div class="profile-metrics__chart" *ngIf="selectedChartType === 'pie'">
+                                <h3>Event Attendance Breakdown</h3>
+                                <div class="chart-container">
+                                    <canvas baseChart
+                                        data-chart-type="pie"
+                                        [data]="getEventAttendanceChartData()"
+                                        [type]="'pie'"
+                                        [options]="getPieChartOptions()">
+                                    </canvas>
+                                </div>
+                            </div>
+
+                            <!-- Monthly Events Chart -->
+                            <div class="profile-metrics__chart" *ngIf="selectedChartType !== 'pie' && selectedMetricChart === 'events'">
+                                <h3>Monthly Events Attended</h3>
+                                <div class="chart-container" *ngIf="volunteerMetrics && volunteerMetrics.historyByMonth && volunteerMetrics.historyByMonth.length > 0">
+                                    <canvas *ngIf="selectedChartType === 'bar'" baseChart
+                                        [data]="getMonthlyEventsChartData()"
+                                        type="bar"
+                                        [options]="getBarLineChartOptions()"
+                                        [legend]="true">
+                                    </canvas>
+                                    <canvas *ngIf="selectedChartType === 'line'" baseChart
+                                        [data]="getMonthlyEventsChartData()"
+                                        type="line"
+                                        [options]="getBarLineChartOptions()"
+                                        [legend]="true">
+                                    </canvas>
+                                </div>
+                                <div *ngIf="!volunteerMetrics || !volunteerMetrics.historyByMonth || volunteerMetrics.historyByMonth.length === 0" class="profile-alert profile-alert--muted">
+                                    <p>No monthly events data available yet.</p>
+                                </div>
+                            </div>
+
+                            <!-- Monthly Hours Chart -->
+                            <div class="profile-metrics__chart" *ngIf="selectedChartType !== 'pie' && selectedMetricChart === 'hours'">
+                                <h3>Monthly Hours Attended</h3>
+                                <div class="chart-container" *ngIf="volunteerMetrics && volunteerMetrics.historyByMonth && volunteerMetrics.historyByMonth.length > 0">
+                                    <canvas *ngIf="selectedChartType === 'bar'" baseChart
+                                        [data]="getMonthlyHoursChartData()"
+                                        type="bar"
+                                        [options]="getBarLineChartOptions()"
+                                        [legend]="true">
+                                    </canvas>
+                                    <canvas *ngIf="selectedChartType === 'line'" baseChart
+                                        [data]="getMonthlyHoursChartData()"
+                                        type="line"
+                                        [options]="getBarLineChartOptions()"
+                                        [legend]="true">
+                                    </canvas>
+                                </div>
+                                <div *ngIf="!volunteerMetrics || !volunteerMetrics.historyByMonth || volunteerMetrics.historyByMonth.length === 0" class="profile-alert profile-alert--muted">
+                                    <p>No monthly hours data available yet.</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Additional Stats -->
+                        <div class="profile-metrics__stats">
+                            <div class="profile-metrics__stat-item">
+                                <span class="profile-metrics__stat-label">No Show Events:</span>
+                                <span class="profile-metrics__stat-value">{{ volunteerMetrics.totalEventsNoShow }}</span>
+                            </div>
+                            <div class="profile-metrics__stat-item">
+                                <span class="profile-metrics__stat-label">Excused Events:</span>
+                                <span class="profile-metrics__stat-value">{{ volunteerMetrics.totalEventsExcused }}</span>
+                            </div>
+                            <div class="profile-metrics__stat-item">
+                                <span class="profile-metrics__stat-label">Canceled by Volunteer:</span>
+                                <span class="profile-metrics__stat-value">{{ volunteerMetrics.canceledByVolunteerCount }}</span>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+
+                <!-- Support Messages Section -->
+                <div class="profile-card card shadow-sm" id="support-messages">
+                    <div class="profile-card__header">
+                        <button type="button" class="profile-card__toggle" (click)="supportMessagesSectionExpanded = !supportMessagesSectionExpanded" [attr.aria-expanded]="supportMessagesSectionExpanded">
+                            <i class="bi me-2" [ngClass]="supportMessagesSectionExpanded ? 'bi-caret-down-fill' : 'bi-caret-right-fill'"></i>
+                            <div class="profile-card__header-text">
+                                <h2>Support Messages</h2>
+                                <p class="profile-card__subtitle">View your support inquiries and responses from administrators</p>
+                            </div>
+                        </button>
+                    </div>
+
+                    <div *ngIf="supportMessagesSectionExpanded">
+
+                    <div *ngIf="supportMessagesError" class="profile-alert profile-alert--error">
+                        <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ supportMessagesError }}
+                    </div>
+
+                    <div *ngIf="loadingSupportMessages" class="profile-loading">
+                        <div class="spinner-border text-success" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p>Loading support messages…</p>
+                    </div>
+
+                    <div *ngIf="!loadingSupportMessages && userSupportMessages.length === 0"
+                        class="profile-alert profile-alert--muted">
+                        <i class="bi bi-info-circle me-2"></i>No support messages yet. 
+                        <a routerLink="/support" class="text-success">Contact support</a> if you need assistance.
+                    </div>
+
+                    <div *ngIf="!loadingSupportMessages && userSupportMessages.length > 0" class="profile-support-messages">
+                        <div class="profile-support-message" *ngFor="let message of paginatedSupportMessages">
+                            <div class="profile-support-message__header" (click)="toggleMessageExpanded(getMessageId(message))">
+                                <div class="profile-support-message__header-content">
+                                    <div>
+                                        <h3>
+                                            {{ message.subject }}
+                                            <span class="profile-support-message__id">#{{ getMessageId(message) }}</span>
+                                        </h3>
+                                        <span class="profile-support-message__date">
+                                            <i class="bi bi-calendar3 me-1"></i>
+                                            {{ formatSupportMessageDate(message.createdAt || message.submittedAt || message.created_at || message.submitted_at) }}
+                                        </span>
+                                    </div>
+                                    <div class="profile-support-message__header-badges">
+                                        <span class="badge" 
+                                            [ngClass]="isSupportMessageResolved(message) ? 'bg-success' : 'bg-warning text-dark'">
+                                            {{ isSupportMessageResolved(message) ? 'Resolved' : 'Pending' }}
+                                        </span>
+                                        <button class="btn btn-link btn-sm profile-support-message__toggle" 
+                                            (click)="toggleMessageExpanded(getMessageId(message)); $event.stopPropagation()"
+                                            [attr.aria-expanded]="isMessageExpanded(getMessageId(message))">
+                                            <i class="bi" 
+                                                [ngClass]="isMessageExpanded(getMessageId(message)) ? 'bi-chevron-up' : 'bi-chevron-down'"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="profile-support-message__body" 
+                                *ngIf="isMessageExpanded(getMessageId(message))">
+                                <div class="profile-support-message__original">
+                                    <h4><i class="bi bi-person me-2"></i>Your Message</h4>
+                                    <p>{{ message.message }}</p>
+                                </div>
+
+                                <div *ngIf="isSupportMessageResolved(message)" class="profile-support-message__response">
+                                    <h4><i class="bi bi-shield-check me-2"></i>Admin Response</h4>
+                                    <p>{{ message.responseMessage || message.response_message }}</p>
+                                    <small class="text-muted">
+                                        Responded: {{ formatSupportMessageDate(message.respondedAt || message.responded_at) }}
+                                    </small>
+                                </div>
+                            </div>
+
+                            <div class="profile-support-message__actions" 
+                                *ngIf="isMessageExpanded(getMessageId(message))">
+                                <button class="btn btn-outline-success btn-sm" (click)="openFollowUpModal(message)">
+                                    <i class="bi bi-reply me-1"></i>Send Follow-up
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Support Messages Pagination -->
+                    <div class="profile-pagination" *ngIf="userSupportMessages.length > supportMessagesPageSize">
+                        <div class="profile-pagination__size">
+                            <label for="supportMessagesPageSize">Show</label>
+                            <select id="supportMessagesPageSize" [(ngModel)]="supportMessagesPageSize" (ngModelChange)="changeSupportMessagesPageSize($event)">
+                                <option *ngFor="let size of supportMessagesPageSizeOptions" [value]="size">{{ size }}</option>
+                            </select>
+                            <span>per page</span>
+                        </div>
+                        <div class="profile-pagination__controls">
+                            <button class="btn btn-outline-success btn-sm" (click)="goToSupportMessagesPage(supportMessagesCurrentPage - 1)"
+                                [disabled]="supportMessagesCurrentPage === 1">Prev</button>
+                            <button *ngFor="let page of supportMessagesPageNumbers" class="btn btn-sm profile-pagination__button"
+                                [ngClass]="{'btn-success text-white': page === supportMessagesCurrentPage, 'btn-outline-success': page !== supportMessagesCurrentPage}"
+                                (click)="goToSupportMessagesPage(page)">{{ page }}</button>
+                            <button class="btn btn-outline-success btn-sm" (click)="goToSupportMessagesPage(supportMessagesCurrentPage + 1)"
+                                [disabled]="supportMessagesCurrentPage === supportMessagesTotalPages">Next</button>
+                        </div>
+                    </div>
+                    </div>
+                </div>
         </section>
     </ng-container>
+</div>
+
+<!-- Follow-up Message Modal -->
+<div *ngIf="showSupportMessageModal && selectedSupportMessageForReply" class="profile-modal">
+    <div class="profile-modal__content">
+        <h3>Send Follow-up Message</h3>
+        <p class="text-muted">
+            Replying to: <strong>{{ selectedSupportMessageForReply.subject }}</strong>
+            <span class="profile-support-message__id">#{{ getMessageId(selectedSupportMessageForReply) }}</span>
+        </p>
+        
+        <div *ngIf="supportMessagesError" class="profile-alert profile-alert--error">
+            <i class="bi bi-exclamation-triangle-fill me-2"></i>{{ supportMessagesError }}
+        </div>
+
+        <form (ngSubmit)="submitFollowUpMessage()" class="profile-form">
+            <div class="profile-field">
+                <label for="followUpSubject">Subject</label>
+                <input type="text" id="followUpSubject" [(ngModel)]="followUpForm.subject" name="followUpSubject"
+                    maxlength="150" required>
+            </div>
+            <div class="profile-field">
+                <label for="followUpMessage">Message</label>
+                <textarea id="followUpMessage" [(ngModel)]="followUpForm.message" name="followUpMessage" rows="6"
+                    maxlength="65535" required placeholder="Enter your follow-up message..."></textarea>
+            </div>
+            <div class="profile-actions">
+                <button type="button" class="btn btn-outline-secondary" (click)="closeFollowUpModal()">Cancel</button>
+                <button type="submit" class="btn btn-success" [disabled]="isSubmittingFollowUp">
+                    {{ isSubmittingFollowUp ? 'Sending...' : 'Send Follow-up' }}
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 <ng-template #loadingState>
