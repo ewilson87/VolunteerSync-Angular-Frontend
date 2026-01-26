@@ -856,16 +856,28 @@
                 </form>
             </section>
 
-            <section class="organizer-delete card shadow-sm" *ngIf="showDeleteEventConfirmation && selectedEvent">
-                <h2>Delete Event</h2>
-                <p>Are you sure you want to delete <strong>{{ selectedEvent.title }}</strong>? This action cannot be
-                    undone
-                    and will remove all registrations.</p>
-                <div class="organizer-actions">
-                    <button class="btn btn-outline-secondary" (click)="cancelDeleteEvent()">Cancel</button>
-                    <button class="btn btn-danger" (click)="deleteEvent()">Delete Event</button>
+            <!-- Delete Event Modal -->
+            <div *ngIf="showDeleteEventModal && eventToDelete" class="organizer-modal">
+                <div class="organizer-modal__content">
+                    <h2>Delete Event</h2>
+                    <p>
+                        Are you sure you want to delete <strong>{{ eventToDelete.title }}</strong>?
+                        This action cannot be undone and will remove all registrations.
+                    </p>
+                    <div class="organizer-actions">
+                        <button type="button" class="btn btn-outline-secondary" (click)="cancelDeleteEvent()"
+                            [disabled]="isDeletingEvent">
+                            Cancel
+                        </button>
+                        <button type="button" class="btn btn-danger" (click)="deleteEvent()"
+                            [disabled]="isDeletingEvent">
+                            <span *ngIf="isDeletingEvent" class="spinner-border spinner-border-sm me-2"
+                                role="status"></span>
+                            {{ isDeletingEvent ? 'Deleting...' : 'Delete Event' }}
+                        </button>
+                    </div>
                 </div>
-            </section>
+            </div>
 
             <!-- Support Message Modal -->
             <div *ngIf="showSupportModal" class="organizer-modal">

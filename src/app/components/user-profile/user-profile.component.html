@@ -218,7 +218,7 @@
                                             <a [routerLink]="['/events', event.eventId]"
                                                 class="btn btn-outline-success">View Details</a>
                                             <button class="btn btn-outline-danger"
-                                                (click)="cancelSignup(event.signupId!)"
+                                                (click)="openCancelSignupModal(event)"
                                                 *ngIf="canManageRegistrations">Cancel Registration</button>
                                         </div>
                                     </div>
@@ -806,6 +806,28 @@
                 </div>
         </section>
     </ng-container>
+</div>
+
+<!-- Cancel Registration Modal -->
+<div *ngIf="showCancelSignupModal" class="profile-modal">
+    <div class="profile-modal__content">
+        <h3>Cancel Registration</h3>
+        <p class="text-muted">
+            Are you sure you want to cancel your registration for
+            <strong>{{ pendingCancelEventTitle }}</strong>?
+        </p>
+
+        <div class="profile-actions">
+            <button type="button" class="btn btn-outline-secondary" (click)="closeCancelSignupModal()"
+                [disabled]="isCancellingSignup">
+                Keep Registration
+            </button>
+            <button type="button" class="btn btn-danger" (click)="confirmCancelSignup()"
+                [disabled]="isCancellingSignup">
+                {{ isCancellingSignup ? 'Cancelling...' : 'Yes, Cancel' }}
+            </button>
+        </div>
+    </div>
 </div>
 
 <!-- Follow-up Message Modal -->

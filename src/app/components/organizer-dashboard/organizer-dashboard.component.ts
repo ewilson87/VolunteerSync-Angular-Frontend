@@ -75,6 +75,9 @@ export class OrganizerDashboardComponent implements OnInit {
   selectedEvent: EventWithRegistrations | null = null;
   isEditingEvent = false;
   showDeleteEventConfirmation = false;
+  showDeleteEventModal = false;
+  eventToDelete: EventWithRegistrations | null = null;
+  isDeletingEvent = false;
   activeEventTab: 'upcoming' | 'past' | 'all' = 'upcoming';
 
   // Events Pagination
@@ -1602,31 +1605,38 @@ export class OrganizerDashboardComponent implements OnInit {
 
   // Show delete event confirmation
   confirmDeleteEvent(event: EventWithRegistrations): void {
-    this.selectedEvent = event;
-    this.showDeleteEventConfirmation = true;
+    this.error = '';
+    this.success = '';
+    this.eventToDelete = event;
+    this.showDeleteEventModal = true;
   }
 
   // Cancel delete event
   cancelDeleteEvent(): void {
-    this.selectedEvent = null;
-    this.showDeleteEventConfirmation = false;
+    if (this.isDeletingEvent) return;
+    this.eventToDelete = null;
+    this.showDeleteEventModal = false;
   }
 
   // Delete event
   deleteEvent(): void {
-    if (!this.selectedEvent || !this.selectedEvent.eventId) return;
+    if (this.isDeletingEvent) return;
+    if (!this.eventToDelete || !this.eventToDelete.eventId) return;
 
-    this.volunteerService.deleteEvent(this.selectedEvent.eventId).subscribe({
+    this.isDeletingEvent = true;
+    const eventId = this.eventToDelete.eventId;
+
+    this.volunteerService.deleteEvent(eventId).subscribe({
       next: () => {
-        this.success = 'Event deleted successfully';
-        // Remove from local list
-        this.events = this.events.filter(e => e.eventId !== this.selectedEvent!.eventId);
-        this.showDeleteEventConfirmation = false;
-        this.selectedEvent = null;
+        // Force a full page refresh to avoid stale cached data/UI state
+        window.location.reload();
       },
       error: (error) => {
         console.error('Error deleting event', error);
         this.error = 'Failed to delete event. Ensure all registrations are cancelled first.';
+        this.isDeletingEvent = false;
+        this.showDeleteEventModal = false;
+        this.eventToDelete = null;
       }
     });
   }

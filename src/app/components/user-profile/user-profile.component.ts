@@ -48,6 +48,12 @@ export class UserProfileComponent implements OnInit {
   showDeleteConfirmation = false;
   password = '';
   isOrganizer = false;
+  
+  // Cancel registration modal
+  showCancelSignupModal = false;
+  pendingCancelSignupId: number | null = null;
+  pendingCancelEventTitle = '';
+  isCancellingSignup = false;
 
   // Password change properties
   showPasswordChange = false;
@@ -1026,12 +1032,53 @@ export class UserProfileComponent implements OnInit {
         console.log('Signup canceled successfully:', result);
         this.success = 'Event registration successfully canceled.';
 
-        // Reload signups to reflect the change
-        this.loadUserSignups();
+        // Force a full page refresh to avoid stale cached data/UI state
+        window.location.reload();
       },
       error: (err) => {
         console.error('Error canceling signup:', err);
         this.error = 'Failed to cancel event registration. Please try again.';
+      }
+    });
+  }
+
+  openCancelSignupModal(event: EventWithDetails): void {
+    if (!event?.signupId) return;
+    if (!this.canManageRegistrations) return;
+
+    this.error = '';
+    this.success = '';
+    this.pendingCancelSignupId = event.signupId;
+    this.pendingCancelEventTitle = event.title || 'this event';
+    this.showCancelSignupModal = true;
+  }
+
+  closeCancelSignupModal(): void {
+    if (this.isCancellingSignup) return;
+    this.showCancelSignupModal = false;
+    this.pendingCancelSignupId = null;
+    this.pendingCancelEventTitle = '';
+  }
+
+  confirmCancelSignup(): void {
+    if (this.isCancellingSignup) return;
+    if (!this.pendingCancelSignupId) return;
+
+    this.isCancellingSignup = true;
+    const signupId = this.pendingCancelSignupId;
+
+    this.volunteerService.deleteSignup(signupId).subscribe({
+      next: () => {
+        // Force a full page refresh to avoid stale cached data/UI state
+        window.location.reload();
+      },
+      error: (err) => {
+        console.error('Error canceling signup:', err);
+        this.error = 'Failed to cancel event registration. Please try again.';
+        this.isCancellingSignup = false;
+        this.showCancelSignupModal = false;
+        this.pendingCancelSignupId = null;
+        this.pendingCancelEventTitle = '';
       }
     });
   }
